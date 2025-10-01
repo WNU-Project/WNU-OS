@@ -1,12 +1,5 @@
 # Prerequisites
 *.d
-
-# Object files
-*.o
-*.ko
-*.obj
-*.elf
-
 # Linker output
 *.ilk
 *.map
@@ -27,15 +20,6 @@
 *.so
 *.so.*
 *.dylib
-
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
-
 # Debug files
 *.dSYM/
 *.su
