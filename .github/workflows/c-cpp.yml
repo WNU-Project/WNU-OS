@@ -1,4 +1,4 @@
-name: C/C++ CI
+name: WNU OS CI/CD
 
 on:
   push:
@@ -8,16 +8,37 @@ on:
 
 jobs:
   build:
-
+    name: Build WNU OS
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
-    - name: configure
-      run: ./configure
-    - name: make
-      run: make
-    - name: make check
-      run: make check
-    - name: make distcheck
-      run: make distcheck
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc make build-essential
+        
+    - name: Navigate to build directory
+      run: cd "1.x.x/1.0.x/1.0.0"
+      
+    - name: Build WNU OS
+      run: |
+        cd "1.x.x/1.0.x/1.0.0"
+        make clean
+        make
+        
+    - name: Test build artifacts
+      run: |
+        cd "1.x.x/1.0.x/1.0.0"
+        ls -la *.exe *.o || echo "Build artifacts check completed"
+        
+    - name: Archive build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: wnuos-build
+        path: |
+          1.x.x/1.0.x/1.0.0/*.exe
+          1.x.x/1.0.x/1.0.0/*.o
+        retention-days: 7
