@@ -252,12 +252,15 @@ int main(void) {
         strcpy(current_user, "unknown");
     }
 
-    // --- Login screen ---
-    printf("WNU OS 1.0.0\n");
+    // --- Getty target login screen ---
+    printf("\n");
+    printf("WNU OS 1.0.0 LTS %s tty1\n", computername);
+    printf("\n");
     printf("%s login: ", computername);
+    fflush(stdout);
 
     if (scanf("%99s", username) != 1) {
-        fprintf(stderr, "No username entered\n");
+        fprintf(stderr, "Login incorrect\n");
         return 1;
     }
 
@@ -352,7 +355,9 @@ int main(void) {
             }
         } else {
             // For root user, replace "C:\" with "~"
-            if (strncmp(cwd, "C:\\", 3) == 0) {
+            if (strcmp(cwd, "C:\\") == 0) {
+                strcpy(display_path, "~");
+            } else if (strncmp(cwd, "C:\\", 3) == 0) {
                 snprintf(display_path, sizeof(display_path), "~/%s", cwd + 3);
             } else {
                 strncpy(display_path, cwd, sizeof(display_path));
@@ -410,6 +415,24 @@ int main(void) {
             } else {
                 printf("Access denied for user: %s\n", target_user);
             }
+        } else if (strcmp(command, "pwd") == 0) {
+            char cwd[1024];
+            if (!_getcwd(cwd, sizeof(cwd))) {
+                strcpy(cwd, "?");
+            }
+            if(strcmp(cwd, "C:\\") == 0) {
+                printf("/\n");
+            } 
+            else if(strncmp(cwd, "C:\\", 3) == 0) {
+                printf("/%s\n", cwd + 3);
+            }
+            else if(strncmp(cwd, "\\", 3 ) == 0) {
+                printf("/%s\n", cwd + 3);
+            }
+            else {
+                printf("%s\n", cwd);
+            }
+
         } else if (strlen(command) > 0) {
             system(command); // Run external command
         }
