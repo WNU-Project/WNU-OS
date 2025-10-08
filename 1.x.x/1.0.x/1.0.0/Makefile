@@ -6,14 +6,14 @@ CFLAGS = -Wall -Wextra -std=c11
 TARGET = wnuos.exe
 
 # Source files
-SRCS = main.c boot.c
+SRCS = main.c boot.c userlogin.c
 OBJS = $(SRCS:.c=.o)
 
 # Default build
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ -lgdi32 -luser32 -Wl,-subsystem,console
+	$(CC) $(CFLAGS) -o $@ $^ -lgdi32 -luser32 -ladvapi32 -lnetapi32 -Wl,-subsystem,console
 
 # Compile .c to .o
 %.o: %.c
