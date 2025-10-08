@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <windows.h>
-#include <direct.h>   // for _getcwd
+#include <direct.h>  // for _getcwd and _chdir
+#include "boot.h"
 
 int main(void) {
     char username[100];
@@ -12,6 +13,9 @@ int main(void) {
     if (!GetComputerNameA(computername, &size)) {
         strcpy(computername, "unknown");
     }
+
+    // Run boot sequence
+    boot_sequence();
 
     // --- Login screen ---
     printf("WNU OS 1.0.0\n");
@@ -28,16 +32,31 @@ int main(void) {
     }
 
     printf("Welcome, root!\n");
+    _chdir("C:\\");
 
-    // --- Fake shell loop ---
+    // --- Shell loop ---
     while (1) {
         char cwd[1024];
         if (!_getcwd(cwd, sizeof(cwd))) {
             strcpy(cwd, "?");
         }
 
+        // Replace "C:\" with "~" and convert backslashes to slashes
+        char display_path[1024];
+        if (strncmp(cwd, "C:\\", 3) == 0) {
+            snprintf(display_path, sizeof(display_path), "~/%s", cwd + 3);
+        } else {
+            strncpy(display_path, cwd, sizeof(display_path));
+        }
+
+        for (int i = 0; display_path[i]; ++i) {
+            if (display_path[i] == '\\') {
+                display_path[i] = '/';
+            }
+        }
+
         // Print prompt
-        printf("%s@root#:%s ", computername, cwd);
+        printf("%s@root#:%s ", computername, display_path);
 
         // Read command
         char command[256];
@@ -57,8 +76,7 @@ int main(void) {
                 perror("cd failed");
             }
         } else if (strlen(command) > 0) {
-            // Run external command
-            system(command);
+            system(command); // Run external command
         }
     }
 

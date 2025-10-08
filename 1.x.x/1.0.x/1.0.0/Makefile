@@ -6,7 +6,7 @@ CFLAGS = -Wall -Wextra -std=c11
 TARGET = wnuos.exe
 
 # Source files
-SRCS = main.c 
+SRCS = main.c boot.c
 OBJS = $(SRCS:.c=.o)
 
 # Default build
