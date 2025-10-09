@@ -7,6 +7,10 @@
 #include "userlogin.h"
 #include "poweroff.h"
 
+#ifndef PROCESSOR_ARCHITECTURE_ARM64
+#define PROCESSOR_ARCHITECTURE_ARM64 12
+#endif
+
 // Define the global variable
 int isnormaluser = 0;
 
@@ -458,8 +462,44 @@ int main(void) {
             else {
                 printf("%s\n", cwd);
             }
+        
 
-        } else if (strlen(command) > 0) {
+        } 
+        else if (strcmp(command, "uname -a") == 0) {
+         SYSTEM_INFO sysinfo;
+         GetSystemInfo(&sysinfo);
+
+         const char* arch;
+         switch (sysinfo.wProcessorArchitecture) {
+         case PROCESSOR_ARCHITECTURE_AMD64:
+            arch = "x86_64";
+            break;
+         case PROCESSOR_ARCHITECTURE_INTEL:
+            // Check if it's actually 64-bit Intel running in 32-bit mode
+            if (sysinfo.dwProcessorType == PROCESSOR_INTEL_PENTIUM || 
+                sysinfo.dwProcessorType == PROCESSOR_INTEL_IA64 ||
+                sysinfo.wProcessorLevel >= 6) {
+                // Modern Intel processors (Core series, etc.) - assume 64-bit capable
+                arch = "x86_64";
+            } else {
+                arch = "i686"; // Older 32-bit Intel
+            }
+            break;
+         case PROCESSOR_ARCHITECTURE_ARM:
+            arch = "arm";
+            break;
+         case PROCESSOR_ARCHITECTURE_ARM64:
+            arch = "aarch64";
+            break;
+         default:
+            arch = "unknown";
+            break;
+         }
+
+         printf("WNU OS %s 1.0.0 WNU-Kernel-1.0.0 #1 SMP FULL_RELEASE WNU/2025 %s WNU\n", computername, arch);
+        }
+
+        else if (strlen(command) > 0) {
             system(command); // Run external command
         }
     }

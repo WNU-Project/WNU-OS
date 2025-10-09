@@ -114,22 +114,22 @@ void boot_sequence() {
     printf("[\033[2m%.6f\033[0m] Mounting root filesystem at / (C:\\)... [\t\033[32mOK\033[0m\t]\n", t + 1.4);
 
     // Start system services with randomized delays
-    start_service("udev", 300, 1);
+    start_service("udev", 120, rand() % 10 != 0);
     Sleep(200 + (rand() % 100));
-    start_service("systemd-journald", 150, 1);
+    start_service("systemd-journald", 120, rand() % 10 != 0);
     Sleep(200 + (rand() % 100));
-    start_service("systemd-networkd", 200, 1);
+    start_service("systemd-networkd", 120, rand() % 10 != 0);
     Sleep(200 + (rand() % 100));
-    start_service("dbus", 180, 1);
-    start_service("NetworkManager", 250, 1);
+    start_service("dbus", 120, rand() % 10 != 0);
+    start_service("NetworkManager", 120, rand() % 10 != 0);
     Sleep(200 + (rand() % 100));
-    start_service("ssh", 120, 1);
+    start_service("ssh", 120, rand() % 10 != 0);
     Sleep(200 + (rand() % 100));
-    start_service("cron", 100, 1);
+    start_service("cron", 120, rand() % 10 != 0);
     Sleep(200 + (rand() % 100));
-    start_service("rsyslog", 140, 1);
+    start_service("rsyslog", 120, rand() % 10 != 0);
     Sleep(200 + (rand() % 100));
-    start_service("getty@tty1", 160, 1);
+    start_service("getty@tty1", 120, rand() % 10 != 0);
     Sleep(200 + (rand() % 100));
     printf("[\033[2m%.6f\033[0m] Reaching target Multi-User System. [\t\033[33mPENDING\033[0m\t]\n", get_unix_epoch_seconds());
     Sleep(200 + (rand() % 100));
@@ -141,5 +141,5 @@ void boot_sequence() {
     printf("System ready for login.\n");
     printf("\n");
     Sleep(500 + (rand() % 100));
-    // system("cls");
+    system("cls");
 }
