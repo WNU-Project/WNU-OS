@@ -5,6 +5,7 @@
 #include <lmcons.h>  // for UNLEN
 #include "boot.h"
 #include "userlogin.h"
+#include "poweroff.h"
 
 // Define the global variable
 int isnormaluser = 0;
@@ -254,7 +255,7 @@ int main(void) {
 
     // --- Getty target login screen ---
     printf("\n");
-    printf("WNU OS 1.0.0 LTS %s tty1\n", computername);
+    printf("WNU OS 1.0.0 %s tty1\n", computername);
     printf("\n");
     printf("%s login: ", computername);
     fflush(stdout);
@@ -386,13 +387,22 @@ int main(void) {
         // Handle built-in commands
         if (strcmp(command, "exit") == 0) {
             printf("Goodbye!\n");
-            break;
+            Sleep(500);
+            if (poweroff_sequence() == 0) {
+                break; // End the shell if poweroff returns 0
+            }
         } else if (strncmp(command, "cd ", 3) == 0) {
             if (_chdir(command + 3) != 0) {
                 perror("cd failed");
             }
         } else if (strcmp(command, "whoami") == 0) {
-            printf("%s\n", username);
+            printf("FULL USERNAME: %s/%s\n", computername, username);
+            if (isnormaluser) {
+                printf("USER'S HOME DIRECTORY: C:/Users/%s\n", username);
+            } else {
+                printf("USER'S HOME DIRECTORY: C:/%s\n", username);
+            }
+            printf("USERNAME: %s\n", username);
         } else if (strncmp(command, "su ", 3) == 0) {
             char target_user[100];
             sscanf(command + 3, "%99s", target_user);
@@ -424,10 +434,26 @@ int main(void) {
                 printf("/\n");
             } 
             else if(strncmp(cwd, "C:\\", 3) == 0) {
-                printf("/%s\n", cwd + 3);
+                // Convert backslashes to forward slashes for Unix-style output
+                char unix_path[1024];
+                strcpy(unix_path, cwd + 3);
+                for (int i = 0; unix_path[i]; i++) {
+                    if (unix_path[i] == '\\') {
+                        unix_path[i] = '/';
+                    }
+                }
+                printf("/%s\n", unix_path);
             }
             else if(strncmp(cwd, "\\", 3 ) == 0) {
-                printf("/%s\n", cwd + 3);
+                // Convert backslashes to forward slashes for Unix-style output
+                char unix_path[1024];
+                strcpy(unix_path, cwd + 3);
+                for (int i = 0; unix_path[i]; i++) {
+                    if (unix_path[i] == '\\') {
+                        unix_path[i] = '/';
+                    }
+                }
+                printf("/%s\n", unix_path);
             }
             else {
                 printf("%s\n", cwd);
