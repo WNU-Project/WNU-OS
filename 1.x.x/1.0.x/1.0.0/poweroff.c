@@ -43,6 +43,30 @@ int poweroff_sequence(void) {
 
     double t = get_poweroff_unix_epoch_seconds();
 
+    char* loadingbar = "####################################################################################################";
+    printf("\033[36mStarting systemd-reboot.service... 0%%\033[0m");
+    
+    int total_length = strlen(loadingbar);
+    
+    for (int i = 0; loadingbar[i] != '\0'; i++) {
+        // Calculate current percentage based on characters printed
+        int percentage = ((i + 1) * 100) / total_length;
+        
+        // Move cursor back to overwrite the percentage
+        printf("\b\b\b\b"); // Move back 4 characters to overwrite "XX%"
+        
+        // Print the current character
+        printf("%c", loadingbar[i]);
+        
+        // Print updated percentage
+        printf(" %d%%", percentage);
+        
+        fflush(stdout);
+        Sleep(10); // Simulate loading delay
+    }
+    
+    // Final newline after 100% completion
+
     printf("\n");
     printf("[\033[2m%.6f\033[0m] WNU OS 1.0.0 shutdown initiated... [\t\033[33mPENDING\033[0m\t]\n", t);
     fflush(stdout);

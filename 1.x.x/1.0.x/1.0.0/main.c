@@ -3,9 +3,12 @@
 #include <windows.h>
 #include <direct.h>  // for _getcwd and _chdir
 #include <lmcons.h>  // for UNLEN
+#include <conio.h>   // for _getch function
 #include "boot.h"
 #include "userlogin.h"
 #include "poweroff.h"
+#include "halt.h"
+#include "reboot.h"
 
 #ifndef PROCESSOR_ARCHITECTURE_ARM64
 #define PROCESSOR_ARCHITECTURE_ARM64 12
@@ -278,19 +281,32 @@ int main(void) {
         // User entered their actual Windows username, now verify password
         char password[100];
         printf("Password: ");
+        fflush(stdout);
         
         // Clear the input buffer from the previous scanf
         int c;
         while ((c = getchar()) != '\n' && c != EOF);
         
-        // Read the entire line including spaces
-        if (!fgets(password, sizeof(password), stdin)) {
-            fprintf(stderr, "No password entered\n");
-            return 1;
+        // Read password with masking (show asterisks)
+        int i = 0;
+        while (i < 99) {
+            c = _getch(); // Get character without echoing to console
+            
+            if (c == '\r' || c == '\n') { // Enter key pressed
+                break;
+            } else if (c == '\b' || c == 127) { // Backspace pressed
+                if (i > 0) {
+                    printf("\b \b"); // Move back, print space, move back again
+                    i--;
+                }
+            } else if (c >= 32 && c <= 126) { // Printable characters
+                password[i] = c;
+                printf("*"); // Show asterisk instead of actual character
+                i++;
+            }
         }
-        
-        // Remove the trailing newline from fgets
-        password[strcspn(password, "\n")] = 0;
+        password[i] = '\0'; // Null-terminate the password
+        printf("\n"); // Move to next line after password input
         
         // Authenticate with password or PIN
         if (authenticate_user(username, password)) {
@@ -377,7 +393,7 @@ int main(void) {
 
         // Print prompt (# for root, $ for normal user)
         char prompt_symbol = isnormaluser ? '$' : '#';
-        printf("%s@%s%c:%s ", computername, username, prompt_symbol, display_path);
+        printf("%s@%s:%s%c ", computername, username, display_path, prompt_symbol);
 
         // Read command
         char command[256];
@@ -389,13 +405,89 @@ int main(void) {
         command[strcspn(command, "\n")] = 0;
 
         // Handle built-in commands
-        if (strcmp(command, "exit") == 0) {
-            printf("Goodbye!\n");
-            Sleep(500);
+        if (strcmp(command, "shutdown") == 0) {
+            printf("In 10 Seconds, the shell will shut down.\n");
+            Sleep(10000);
+            system("cls");
             if (poweroff_sequence() == 0) {
                 break; // End the shell if poweroff returns 0
             }
-        } else if (strncmp(command, "cd ", 3) == 0) {
+        } 
+        else if (strcmp(command, "poweroff now") == 0) {
+            printf("Shutting down immediately...\n");
+            Sleep(5);
+            system("cls");
+            if (poweroff_sequence() == 0) {
+                break; // End the shell if poweroff returns 0
+            }
+        }
+        else if (strcmp(command, "halt") == 0) {
+            printf("Halting system...\n");
+            printf("Press Ctrl+S+H during or after halt to restart shell\n");
+            Sleep(2000); // Give user time to see the message
+            system("cls");
+            
+            int halt_result = halt_sequence();
+            
+            // Check if user pressed Ctrl+S+H to restart
+            if (halt_result == -1) {
+                // Halt was interrupted/restarted by Ctrl+S+H
+                printf("\n\033[33m[SYSTEM RESTART]\033[0m Shell restart requested by user!\n");
+                Sleep(1500);
+                system("cls");
+                
+                // Restart the shell (simulate shell restart)
+                printf("\033[32m[SYSTEM]\033[0m WNU OS Shell Restarting...\n");
+                Sleep(1000);
+                printf("\033[36mShell restart complete.\033[0m\n\n");
+                
+                // Continue with shell loop (don't break)
+                continue;
+            }
+            // Note: halt_result should never be 0 since we stay in halt state until restart
+            // The halt function now stays in an infinite loop until Ctrl+S+H is pressed
+        }
+        else if (strcmp(command, "reboot") == 0) {
+            printf("Rebooting system...\n");
+            printf("Press Ctrl+C, ESC, or I key to interrupt reboot\n");
+            Sleep(2000);
+            system("cls");
+            
+            int reboot_result = reboot_sequence();
+            
+            // Check if reboot was interrupted
+            if (reboot_result == -1) {
+                // Reboot was interrupted by user
+                printf("\n\033[33m[REBOOT CANCELLED]\033[0m Reboot interrupted by user!\n");
+                Sleep(1500);
+                system("cls");
+                
+                // Return to shell (simulate cancellation)
+                printf("\033[32m[SYSTEM]\033[0m Reboot cancelled, returning to shell...\n");
+                Sleep(1000);
+                printf("\033[36mBack to WNU OS shell.\033[0m\n\n");
+                
+                // Continue with shell loop (don't break)
+                continue;
+            } else if (reboot_result == 0) {
+                // Reboot completed successfully - restart shell
+                printf("\n\033[32m[REBOOT COMPLETE]\033[0m System reboot successful!\n");
+                Sleep(1500);
+                system("cls");
+                
+                // Simulate system restart by restarting shell
+                printf("\033[32m[SYSTEM]\033[0m WNU OS Restarting after reboot...\n");
+                Sleep(1000);
+                printf("\033[36mWelcome back to WNU OS!\033[0m\n\n");
+                
+                // Continue with shell loop (simulate fresh start)
+                continue;
+            }
+        } 
+        else if (strcmp(command, "clear") == 0 || strcmp(command, "cls") == 0) {
+            system("cls");
+        }
+        else if (strncmp(command, "cd ", 3) == 0) {
             if (_chdir(command + 3) != 0) {
                 perror("cd failed");
             }

@@ -12,6 +12,7 @@
 #include <direct.h>   // for _chdir
 
 void user_login(const char* username, const char* password) {
+    (void)password; // Suppress unused parameter warning
     char actual_user[UNLEN + 1];
     DWORD user_len = UNLEN + 1;
 
