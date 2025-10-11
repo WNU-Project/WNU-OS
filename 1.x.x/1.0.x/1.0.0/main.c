@@ -410,8 +410,8 @@ int main(void) {
         command[strcspn(command, "\n")] = 0;
 
         // Handle built-in commands
-        if (strcmp(command, "shutdown") == 0) {
-            printf("In 10 Seconds, the shell will shut down.\n");
+        if (strcmp(command, "poweroff") == 0) {
+            printf("In 10 Seconds, the shell will power off.\n");
             Sleep(10000);
             system("cls");
             if (poweroff_sequence() == 0) {
