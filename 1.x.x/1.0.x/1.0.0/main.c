@@ -267,10 +267,13 @@ int main(void) {
     printf("%s login: ", computername);
     fflush(stdout);
 
-    if (scanf("%99s", username) != 1) {
+    if (!fgets(username, sizeof(username), stdin)) {
         fprintf(stderr, "Login incorrect\n");
         return 1;
     }
+    
+    // Remove newline character from username if present
+    username[strcspn(username, "\n")] = 0;
 
     // Check if user is root
     if (strcmp(username, "root") == 0) {
@@ -283,12 +286,11 @@ int main(void) {
         printf("Password: ");
         fflush(stdout);
         
-        // Clear the input buffer from the previous scanf
-        int c;
-        while ((c = getchar()) != '\n' && c != EOF);
+        // No need to clear input buffer since fgets() already consumed the newline
         
         // Read password with Unix-style hidden input (no visual feedback)
         int i = 0;
+        int c;
         while (i < 99) {
             c = _getch(); // Get character without echoing to console
             
