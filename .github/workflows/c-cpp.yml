@@ -9,27 +9,31 @@ on:
 jobs:
   build:
     name: Build WNU OS
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
       
-    - name: Install dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y gcc make build-essential
+    - name: Setup MinGW
+      uses: msys2/setup-msys2@v2
+      with:
+        msystem: MINGW64
+        update: false
+        install: >-
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-make
+          make
         
-    - name: Navigate to build directory
-      run: cd "1.x.x/1.0.x/1.0.0"
-      
     - name: Build WNU OS
+      shell: msys2 {0}
       run: |
         cd "1.x.x/1.0.x/1.0.0"
-        make clean
+        make clean || true
         make
         
     - name: Test build artifacts
+      shell: msys2 {0}
       run: |
         cd "1.x.x/1.0.x/1.0.0"
         ls -la *.exe *.o || echo "Build artifacts check completed"
