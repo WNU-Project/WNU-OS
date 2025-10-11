@@ -35,7 +35,7 @@ jobs:
         ls -la *.exe *.o || echo "Build artifacts check completed"
         
     - name: Archive build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: wnuos-build
         path: |
