@@ -2,16 +2,16 @@
 
 All notable changes to WNU OS will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 1.0.0 - 2025-10-11
+## [Unreleased]
 
-### 🎉 Initial Release
+## [1.0.0] - 2025-10-11
 
-The first stable release of WNU OS (Windows Not Unix) - a sophisticated Unix-like shell environment for Windows.
+### Added
 
-### ✨ Added
+**Initial Release** - The first stable release of WNU OS (Windows Not Unix) - a sophisticated Unix-like shell environment for Windows.
 
 #### Core Shell Features
 
@@ -56,48 +56,42 @@ The first stable release of WNU OS (Windows Not Unix) - a sophisticated Unix-lik
 - **Process simulation** - Realistic Unix-style system behavior on Windows
 - **Error handling** - Comprehensive error checking with helpful user feedback
 
-### 🏗️ Technical Implementation
-
-#### Architecture
+#### Technical Implementation - Architecture
 
 - **Native C implementation** using Windows APIs
 - **Modular design** with separate components (boot, halt, poweroff, reboot, userlogin)
 - **Memory safety** with proper buffer management
 - **Cross-compilation support** for Windows environments
 
-#### Build System
+#### Technical Implementation - Build System
 
 - **Makefile** for Unix-style building
 - **build.bat** for Windows batch compilation
 - **GitHub Actions CI/CD** with Windows runner and MinGW toolchain
 - **Artifact generation** with automated build verification
 
-#### Security Features
+#### Technical Implementation - Security Features
 
 - **Multi-layer authentication** with enterprise-grade security
 - **Privilege separation** between root and user contexts
 - **Secure input handling** with hidden credential entry
 - **Windows security integration** using native authentication APIs
 
-### 🎨 User Experience
-
-#### Interface Design
+#### User Experience - Interface Design
 
 - **Authentic Unix feel** with proper command syntax and behavior
 - **Visual feedback** with colored output and status indicators
 - **Professional login experience** matching traditional Unix systems
 - **Consistent prompt design** with hostname, username, and path display
 
-#### Compatibility
+#### User Experience - Compatibility
 
 - **Windows 10/11 support** with full API compatibility
 - **MinGW/GCC compilation** for native Windows executables
 - **Terminal compatibility** - Command Prompt, PowerShell, Windows Terminal
 - **ANSI color support** via Virtual Terminal Processing
 
-### 📚 Documentation
-
-#### Project Documentation
+#### Documentation - Project Files
 
 - **Comprehensive README** files at root and version levels
 - **Security policy** with vulnerability reporting procedures
@@ -105,16 +99,14 @@ The first stable release of WNU OS (Windows Not Unix) - a sophisticated Unix-lik
 - **Code of Conduct** for community participation
 - **License** under GNU General Public License v3
 
-#### Development Resources
+#### Documentation - Development Resources
 
 - **Pull request templates** with structured review process
 - **Issue templates** for bug reports and feature requests
 - **GitHub workflows** for continuous integration
 - **Build instructions** for multiple environments
 
-### 🔧 Build and Installation
-
-#### Compilation
+#### Build and Installation - Compilation
 
 ```bash
 # Using Make
@@ -127,20 +119,20 @@ build.bat
 gcc -o wnuos.exe main.c boot.c halt.c poweroff.c reboot.c userlogin.c
 ```
 
-#### System Requirements
+#### Build and Installation - System Requirements
 
 - **Operating System**: Windows 10 or later
 - **Compiler**: GCC (MinGW recommended)
 - **Terminal**: ANSI color support recommended
 - **Dependencies**: Windows SDK, standard C libraries
 
-### 🐛 Known Issues
+### Known Issues
 
 - **Quote handling**: Typing single quotes (`'`) may cause continuation prompt - type closing quote or Ctrl+C to exit
 - **External commands**: Some Windows commands may behave differently than Unix equivalents
 - **Path handling**: Mixed path separators in some edge cases
 
-### 🎯 Usage Examples
+### Usage Examples
 
 #### Basic Login and Navigation
 
@@ -224,4 +216,5 @@ USERNAME: tadeo
 
 **Download WNU OS 1.0.0** and experience Unix on Windows! 🐧🪟
 
+[Unreleased]: https://github.com/WNU-Project/WNU-OS/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/WNU-Project/WNU-OS/releases/tag/v1.0.0
