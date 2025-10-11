@@ -14,7 +14,7 @@ all: $(TARGET)
 # Build wsys2.exe
 $(TARGET): $(OBJECTS)
 	@echo "Linking WSYS2..."
-	$(CC) $(OBJECTS) -o $(TARGET)
+	$(CC) $(OBJECTS) -o $(TARGET) -lwininet
 	@echo "✓ WSYS2 built successfully!"
 
 # Build wnupkg-compiler.exe

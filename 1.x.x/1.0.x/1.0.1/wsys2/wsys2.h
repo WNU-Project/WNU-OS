@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <windows.h>
+#include <wininet.h>
 
 // WSYS2 Version Information
 #define WSYS2_VERSION "1.0.0"
@@ -35,6 +36,13 @@ int wsys2_update(void);
 int wsys2_search(const char* search_term);
 int wsys2_list(void);
 int wsys2_info(const char* package_name);
+
+// Online package functions
+int wsys2_online_update(void);
+int wsys2_online_search(const char* search_term);
+int wsys2_online_install(const char* package_name);
+int wsys2_online_list(void);
+int wsys2_online_info(const char* package_name);
 
 // Package management functions
 int package_parse_wnupkg(const char* wnupkg_file, Package* pkg);

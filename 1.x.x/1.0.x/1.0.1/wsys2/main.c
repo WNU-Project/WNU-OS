@@ -22,13 +22,23 @@ void print_help() {
     printf("  \033[34msearch\033[0m  <term>      Search for available packages\n");
     printf("  \033[35mlist\033[0m                List all installed packages\n");
     printf("  \033[36minfo\033[0m    <package>    Show package information\n");
+    printf("  \033[95monline\033[0m  <command>    Online package operations\n");
     printf("  \033[37mversion\033[0m             Show WSYS2 version\n");
     printf("  \033[37mhelp\033[0m                Show this help message\n");
+    printf("\nOnline Commands:\n");
+    printf("  \033[95monline update\033[0m       Refresh online package database\n");
+    printf("  \033[95monline search\033[0m <term> Search online packages\n");
+    printf("  \033[95monline install\033[0m <pkg> Install from online repository\n");
+    printf("  \033[95monline list\033[0m         List all available online packages\n");
+    printf("  \033[95monline info\033[0m <pkg>   Show online package information\n");
     printf("\nExamples:\n");
     printf("  wsys2 install vim.wnupkg\n");
     printf("  wsys2 remove vim\n");
     printf("  wsys2 list\n");
     printf("  wsys2 search editor\n");
+    printf("  wsys2 online update\n");
+    printf("  wsys2 online install git\n");
+    printf("  wsys2 online search dev\n");
 }
 
 int main(int argc, char *argv[]) {
@@ -81,6 +91,48 @@ int main(int argc, char *argv[]) {
             return 1;
         }
         return wsys2_info(argv[2]);
+    }
+    else if (strcmp(command, "online") == 0) {
+        if (argc < 3) {
+            printf("\033[31mError:\033[0m No online command specified\n");
+            printf("Usage: wsys2 online <update|search|install|list|info> [args]\n");
+            return 1;
+        }
+        const char* online_cmd = argv[2];
+        
+        if (strcmp(online_cmd, "update") == 0) {
+            return wsys2_online_update();
+        }
+        else if (strcmp(online_cmd, "search") == 0) {
+            if (argc < 4) {
+                return wsys2_online_search(NULL); // Show all
+            }
+            return wsys2_online_search(argv[3]);
+        }
+        else if (strcmp(online_cmd, "install") == 0) {
+            if (argc < 4) {
+                printf("\033[31mError:\033[0m No package specified for online installation\n");
+                printf("Usage: wsys2 online install <package>\n");
+                return 1;
+            }
+            return wsys2_online_install(argv[3]);
+        }
+        else if (strcmp(online_cmd, "list") == 0) {
+            return wsys2_online_list();
+        }
+        else if (strcmp(online_cmd, "info") == 0) {
+            if (argc < 4) {
+                printf("\033[31mError:\033[0m No package specified for online info\n");
+                printf("Usage: wsys2 online info <package>\n");
+                return 1;
+            }
+            return wsys2_online_info(argv[3]);
+        }
+        else {
+            printf("\033[31mError:\033[0m Unknown online command '%s'\n", online_cmd);
+            printf("Available commands: update, search, install, list, info\n");
+            return 1;
+        }
     }
     else if (strcmp(command, "version") == 0 || strcmp(command, "--version") == 0) {
         printf("WSYS2 Package Manager v1.0.0\n");
@@ -149,6 +201,41 @@ int main(int argc, char *argv[]) {
                 printf("WSYS2 Package Manager v1.0.0\n");
                 printf("Part of WNU OS 1.0.1\n");
                 printf("Package format: .wnupkg\n");
+            } else if (strcmp(args[0], "online") == 0) {
+                if (arg_count < 2) {
+                    printf("\033[31mError:\033[0m No online command specified\n");
+                    printf("Usage: online <update|search|install|list|info> [args]\n");
+                    continue;
+                }
+                
+                if (strcmp(args[1], "update") == 0) {
+                    wsys2_online_update();
+                } else if (strcmp(args[1], "search") == 0) {
+                    if (arg_count < 3) {
+                        wsys2_online_search(NULL); // Show all
+                    } else {
+                        wsys2_online_search(args[2]);
+                    }
+                } else if (strcmp(args[1], "install") == 0) {
+                    if (arg_count < 3) {
+                        printf("\033[31mError:\033[0m No package specified for online installation\n");
+                        printf("Usage: online install <package>\n");
+                        continue;
+                    }
+                    wsys2_online_install(args[2]);
+                } else if (strcmp(args[1], "list") == 0) {
+                    wsys2_online_list();
+                } else if (strcmp(args[1], "info") == 0) {
+                    if (arg_count < 3) {
+                        printf("\033[31mError:\033[0m No package specified for online info\n");
+                        printf("Usage: online info <package>\n");
+                        continue;
+                    }
+                    wsys2_online_info(args[2]);
+                } else {
+                    printf("\033[31mError:\033[0m Unknown online command '%s'\n", args[1]);
+                    printf("Available commands: update, search, install, list, info\n");
+                }
             } else if (strcmp(args[0], "help") == 0 || strcmp(args[0], "--help") == 0) {
                 print_help();
             } else {

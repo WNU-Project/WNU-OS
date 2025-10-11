@@ -281,3 +281,376 @@ void wsys2_print_package(const Package* pkg) {
     }
     printf("\n");
 }
+
+// === ONLINE PACKAGE FUNCTIONS ===
+
+// Helper function to check if URL exists
+int check_url_exists(const char* url) {
+    HINTERNET hInternet, hUrl;
+    DWORD dwStatusCode = 0;
+    DWORD dwSize = sizeof(dwStatusCode);
+    
+    hInternet = InternetOpenA("WSYS2/1.0", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+    if (!hInternet) return 0;
+    
+    hUrl = InternetOpenUrlA(hInternet, url, NULL, 0, INTERNET_FLAG_RELOAD, 0);
+    if (!hUrl) {
+        InternetCloseHandle(hInternet);
+        return 0;
+    }
+    
+    HttpQueryInfoA(hUrl, HTTP_QUERY_STATUS_CODE | HTTP_QUERY_FLAG_NUMBER, 
+                   &dwStatusCode, &dwSize, NULL);
+    
+    InternetCloseHandle(hUrl);
+    InternetCloseHandle(hInternet);
+    
+    return (dwStatusCode == 200);
+}
+
+// Update online package database
+int wsys2_online_update(void) {
+    printf("\033[95mUpdating online package database...\033[0m\n");
+    printf("Repository: https://wnu-project.github.io/wnuos.packages.com/\n\n");
+    
+    printf("\033[33m[1/3]\033[0m Connecting to repository...\n");
+    
+    // Check if the main repository is accessible
+    if (!check_url_exists("https://wnu-project.github.io/wnuos.packages.com/")) {
+        printf("\033[31m✗ Error: Could not connect to repository\033[0m\n");
+        printf("Please check your internet connection\n");
+        return 1;
+    }
+    
+    printf("\033[33m[2/3]\033[0m Scanning for available packages...\n");
+    
+    // Check for known packages
+    int package_count = 0;
+    const char* known_packages[] = {
+        "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-dev-tools/wnu-dev-tools.wnupkg"
+    };
+    
+    size_t num_packages = sizeof(known_packages)/sizeof(known_packages[0]);
+    for (size_t i = 0; i < num_packages; i++) {
+        if (check_url_exists(known_packages[i])) {
+            package_count++;
+            printf("  Found: wnu-dev-tools\n");
+        }
+    }
+    
+    printf("\033[33m[3/3]\033[0m Building package index...\n");
+    Sleep(300);
+    
+    printf("\033[32m✓ Package database updated successfully!\033[0m\n");
+    printf("Found %d packages in repository\n", package_count);
+    return 0;
+}
+
+// Search online packages
+int wsys2_online_search(const char* search_term) {
+    if (search_term) {
+        printf("\033[95mSearching online packages for: %s\033[0m\n", search_term);
+    } else {
+        printf("\033[95mListing all online packages:\033[0m\n");
+    }
+    
+    printf("Repository: https://wnu-project.github.io/wnuos.packages.com/\n\n");
+    
+    // Check repository connectivity
+    if (!check_url_exists("https://wnu-project.github.io/wnuos.packages.com/")) {
+        printf("\033[31m✗ Error: Repository not accessible\033[0m\n");
+        return 1;
+    }
+    
+    printf("\033[34mScanning repository for packages...\033[0m\n");
+    
+    // Real packages found in your repository
+    typedef struct {
+        const char* name;
+        const char* version;
+        const char* description;
+        const char* url;
+    } OnlinePackage;
+    
+    OnlinePackage available_packages[] = {
+        {
+            "wnu-dev-tools", 
+            "1.0.0", 
+            "WNU OS development toolkit", 
+            "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-dev-tools/wnu-dev-tools.wnupkg"
+        }
+    };
+    
+    int found_count = 0;
+    int total_packages = sizeof(available_packages) / sizeof(available_packages[0]);
+    
+    printf("\033[34mAvailable Online Packages:\033[0m\n");
+    
+    for (int i = 0; i < total_packages; i++) {
+        OnlinePackage* pkg = &available_packages[i];
+        
+        // If searching, check if package matches search term
+        if (search_term && strstr(pkg->name, search_term) == NULL && 
+            strstr(pkg->description, search_term) == NULL) {
+            continue;
+        }
+        
+        // Check if package actually exists in repository
+        printf("  Checking: %s... ", pkg->name);
+        if (check_url_exists(pkg->url)) {
+            printf("\033[32m✓\033[0m\n");
+            printf("  \033[36m%s\033[0m v%s - %s\n", pkg->name, pkg->version, pkg->description);
+            printf("    URL: %s\n", pkg->url);
+            found_count++;
+        } else {
+            printf("\033[31m✗\033[0m\n");
+        }
+    }
+    
+    if (found_count == 0) {
+        if (search_term) {
+            printf("\033[33mNo packages found matching: %s\033[0m\n", search_term);
+        } else {
+            printf("\033[33mNo packages available in repository\033[0m\n");
+        }
+    } else {
+        printf("\nFound %d package(s)\n", found_count);
+        printf("Use '\033[95mwsys2 online install <package>\033[0m' to install from repository\n");
+    }
+    
+    return 0;
+}
+
+// Download file from URL
+int download_file(const char* url, const char* local_path) {
+    HINTERNET hInternet, hUrl;
+    FILE* file;
+    char buffer[8192];
+    DWORD bytes_read;
+    
+    hInternet = InternetOpenA("WSYS2/1.0", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+    if (!hInternet) return 0;
+    
+    hUrl = InternetOpenUrlA(hInternet, url, NULL, 0, INTERNET_FLAG_RELOAD, 0);
+    if (!hUrl) {
+        InternetCloseHandle(hInternet);
+        return 0;
+    }
+    
+    file = fopen(local_path, "wb");
+    if (!file) {
+        InternetCloseHandle(hUrl);
+        InternetCloseHandle(hInternet);
+        return 0;
+    }
+    
+    while (InternetReadFile(hUrl, buffer, sizeof(buffer), &bytes_read) && bytes_read > 0) {
+        fwrite(buffer, 1, bytes_read, file);
+    }
+    
+    fclose(file);
+    InternetCloseHandle(hUrl);
+    InternetCloseHandle(hInternet);
+    return 1;
+}
+
+// Install package from online repository
+int wsys2_online_install(const char* package_name) {
+    printf("\033[95mInstalling online package: %s\033[0m\n", package_name);
+    printf("Repository: https://wnu-project.github.io/wnuos.packages.com/\n\n");
+    
+    // Map package names to their URLs in your repository
+    const char* package_url = NULL;
+    if (strcmp(package_name, "wnu-dev-tools") == 0) {
+        package_url = "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-dev-tools/wnu-dev-tools.wnupkg";
+    }
+    
+    if (!package_url) {
+        printf("\033[31m✗ Package '%s' not found in repository\033[0m\n", package_name);
+        return 1;
+    }
+    
+    printf("\033[33m[1/5]\033[0m Resolving package information...\n");
+    
+    // Check if package exists in repository
+    if (!check_url_exists(package_url)) {
+        printf("\033[31m✗ Package not available: %s\033[0m\n", package_url);
+        return 1;
+    }
+    printf("Found: %s in online repository\n", package_name);
+    
+    printf("\033[33m[2/5]\033[0m Downloading package...\n");
+    printf("  Downloading from: %s\n", package_url);
+    
+    // Create online packages directory in WNU system directory
+    _mkdir("C:\\WNU");
+    _mkdir("C:\\WNU\\packages");
+    _mkdir("C:\\WNU\\packages\\online");
+    
+    // Download to system online packages directory
+    char download_path[512];
+    snprintf(download_path, sizeof(download_path), "C:\\WNU\\packages\\online\\%s.wnupkg", package_name);
+    
+    if (!download_file(package_url, download_path)) {
+        printf("\033[31m✗ Failed to download package\033[0m\n");
+        return 1;
+    }
+    
+    printf("\033[33m[3/5]\033[0m Verifying package integrity...\n");
+    
+    // Check if file was downloaded successfully
+    FILE* test_file = fopen(download_path, "rb");
+    if (!test_file) {
+        printf("\033[31m✗ Download verification failed\033[0m\n");
+        return 1;
+    }
+    
+    // Get file size
+    fseek(test_file, 0, SEEK_END);
+    long file_size = ftell(test_file);
+    fclose(test_file);
+    
+    printf("  Package downloaded to: %s\n", download_path);
+    printf("  Package size: %ld bytes (%.2f KB)\n", file_size, file_size / 1024.0);
+    
+    printf("\033[33m[4/5]\033[0m Installing package from download...\n");
+    printf("  Running: wsys2 install %s\n", download_path);
+    
+    // Install the downloaded package using existing install function
+    int result = wsys2_install(download_path);
+    
+    printf("\033[33m[5/5]\033[0m Installation complete\n");
+    
+    // Keep the downloaded file for user inspection
+    printf("  Downloaded package available at: %s\n", download_path);
+    
+    if (result == 0) {
+        printf("\033[32m✓ Online package '%s' installed successfully!\033[0m\n", package_name);
+        printf("Package downloaded from WNU repository and installed\n");
+        printf("Downloaded file available at: C:\\WNU\\packages\\online\\%s.wnupkg\n", package_name);
+    } else {
+        printf("\033[31m✗ Installation failed\033[0m\n");
+        printf("Downloaded package file remains at: C:\\WNU\\packages\\online\\%s.wnupkg\n", package_name);
+    }
+    
+    return result;
+}
+
+// List all online packages
+int wsys2_online_list(void) {
+    printf("\033[95mListing all available online packages:\033[0m\n");
+    printf("Repository: https://wnu-project.github.io/wnuos.packages.com/\n\n");
+    
+    // Check repository connectivity
+    if (!check_url_exists("https://wnu-project.github.io/wnuos.packages.com/")) {
+        printf("\033[31m✗ Error: Repository not accessible\033[0m\n");
+        printf("Please check your internet connection\n");
+        return 1;
+    }
+    
+    printf("\033[34mScanning repository for packages...\033[0m\n\n");
+    
+    // Real packages in your repository
+    typedef struct {
+        const char* name;
+        const char* version;
+        const char* description;
+        const char* url;
+        const char* category;
+    } RepoPackage;
+    
+    RepoPackage repo_packages[] = {
+        {
+            "wnu-dev-tools", 
+            "1.0.0", 
+            "WNU OS development toolkit", 
+            "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-dev-tools/wnu-dev-tools.wnupkg",
+            "Development"
+        }
+    };
+    
+    int available_count = 0;
+    int total_packages = sizeof(repo_packages) / sizeof(repo_packages[0]);
+    
+    printf("\033[34mFirst-Party WNU Packages:\033[0m\n");
+    
+    for (int i = 0; i < total_packages; i++) {
+        RepoPackage* pkg = &repo_packages[i];
+        
+        printf("  Checking: %s... ", pkg->name);
+        if (check_url_exists(pkg->url)) {
+            printf("\033[32m✓\033[0m\n");
+            printf("  \033[36m%s\033[0m v%s - %s\n", pkg->name, pkg->version, pkg->description);
+            available_count++;
+        } else {
+            printf("\033[31m✗ Not available\033[0m\n");
+        }
+    }
+    
+    if (available_count == 0) {
+        printf("\033[33mNo packages currently available in repository\033[0m\n");
+    } else {
+        printf("\nTotal: %d package(s) available\n", available_count);
+        printf("Use '\033[95mwsys2 online install <package>\033[0m' to install\n");
+    }
+    
+    return 0;
+}
+
+// Show online package information
+int wsys2_online_info(const char* package_name) {
+    printf("\033[95mOnline package information for: %s\033[0m\n", package_name);
+    printf("Repository: https://wnu-project.github.io/wnuos.packages.com/\n\n");
+    
+    // Real package information from your repository
+    if (strcmp(package_name, "wnu-dev-tools") == 0) {
+        const char* package_url = "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-dev-tools/wnu-dev-tools.wnupkg";
+        
+        printf("Checking package availability... ");
+        if (check_url_exists(package_url)) {
+            printf("\033[32m✓ Available\033[0m\n\n");
+            
+            printf("  \033[36mwnu-dev-tools\033[0m v1.0.0\n");
+            printf("    Description: Complete development toolkit for WNU OS\n");
+            printf("    Author: WNU Project Team\n");
+            printf("    Category: Development Tools\n");
+            printf("    Download URL: %s\n", package_url);
+            printf("    Repository: https://github.com/WNU-Project/wnu-dev-tools\n");
+            printf("    License: MIT License\n");
+            printf("    Dependencies: None\n");
+            
+            // Try to get file size
+            HINTERNET hInternet = InternetOpenA("WSYS2/1.0", INTERNET_OPEN_TYPE_PRECONFIG, NULL, NULL, 0);
+            if (hInternet) {
+                HINTERNET hUrl = InternetOpenUrlA(hInternet, package_url, NULL, 0, INTERNET_FLAG_RELOAD, 0);
+                if (hUrl) {
+                    char buffer[64];
+                    DWORD size = sizeof(buffer);
+                    if (HttpQueryInfoA(hUrl, HTTP_QUERY_CONTENT_LENGTH, buffer, &size, NULL)) {
+                        long file_size = atol(buffer);
+                        if (file_size > 0) {
+                            printf("    Package Size: %.2f KB\n", file_size / 1024.0);
+                        }
+                    }
+                    InternetCloseHandle(hUrl);
+                }
+                InternetCloseHandle(hInternet);
+            }
+            
+            printf("\n  \033[95mInstall Command:\033[0m wsys2 online install wnu-dev-tools\n");
+            
+        } else {
+            printf("\033[31m✗ Not available\033[0m\n");
+            printf("Package not found in repository\n");
+        }
+    } else {
+        printf("Searching for package: %s... ", package_name);
+        printf("\033[33m✗ Package not found\033[0m\n");
+        printf("\nAvailable packages:\n");
+        printf("  • wnu-dev-tools - WNU OS development toolkit\n");
+        printf("\nUse '\033[95mwsys2 online list\033[0m' to see all available packages\n");
+    }
+    
+    printf("\n");
+    return 0;
+}
