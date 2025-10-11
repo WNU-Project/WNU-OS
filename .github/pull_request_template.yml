@@ -1,0 +1,199 @@
+name: Pull Request
+description: Submit changes to WNU OS
+title: "[PR]: "
+labels: []
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 📋 Pull Request for WNU OS
+        
+        Thank you for contributing to WNU OS! Please fill out this form to help us review your changes.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: 📝 Summary
+      description: Brief description of what this PR does
+      placeholder: "Describe your changes in 1-2 sentences..."
+    validations:
+      required: true
+
+  - type: input
+    id: related-issues
+    attributes:
+      label: 🔗 Related Issues
+      description: Link any related issues
+      placeholder: "Fixes #123, Closes #456, Related to #789"
+
+  - type: dropdown
+    id: change-type
+    attributes:
+      label: 🎯 Type of Change
+      description: What type of change does this PR introduce?
+      options:
+        - 🐛 Bug fix (non-breaking change that fixes an issue)
+        - ✨ New feature (non-breaking change that adds functionality) 
+        - 💥 Breaking change (fix or feature that would cause existing functionality to not work)
+        - 📚 Documentation (updates to documentation, README, comments)
+        - 🔧 Refactoring (code changes that neither fix a bug nor add a feature)
+        - ⚡ Performance (code changes that improve performance)
+        - 🧪 Tests (adding missing tests or correcting existing tests)
+        - 🎨 Style (formatting, missing semi colons, etc; no code change)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: files-modified
+    attributes:
+      label: 📁 Files Modified
+      description: Which core files did you modify?
+      options:
+        - label: main.c (core shell implementation)
+        - label: boot.c/.h (boot sequence)
+        - label: halt.c/.h (system halt)
+        - label: poweroff.c/.h (shutdown procedures)
+        - label: reboot.c/.h (system restart)
+        - label: userlogin.c/.h (authentication)
+        - label: Makefile (build configuration)
+        - label: Documentation (README, comments)
+        - label: GitHub workflows (.github/)
+        - label: Other files
+
+  - type: textarea
+    id: changes-detail
+    attributes:
+      label: 🔍 Detailed Changes
+      description: Describe the changes you made in detail
+      placeholder: |
+        - Added new command `example` to main.c
+        - Fixed authentication bug in userlogin.c
+        - Updated README with new features
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: testing
+    attributes:
+      label: 🧪 Testing Performed
+      description: What testing have you done?
+      options:
+        - label: Code compiles without errors or warnings
+        - label: Basic functionality - core commands work as expected
+        - label: Authentication - login system functions properly
+        - label: System commands - shutdown, halt, reboot work correctly
+        - label: File operations - ls, cd, pwd work as expected
+        - label: Edge cases - tested error conditions and edge cases
+        - label: Windows compatibility - tested on Windows 10/11
+        - label: Terminal compatibility - tested in cmd/PowerShell/Windows Terminal
+
+  - type: input
+    id: test-environment
+    attributes:
+      label: 🖥️ Test Environment
+      description: What environment did you test on?
+      placeholder: "Windows 11, GCC 11.2.0 (MinGW), Windows Terminal"
+
+  - type: textarea
+    id: test-commands
+    attributes:
+      label: 🔧 Test Commands
+      description: What specific commands did you run to test?
+      placeholder: |
+        ./wnuos.exe
+        ls -la
+        su root
+        halt
+      render: bash
+
+  - type: dropdown
+    id: version-target
+    attributes:
+      label: 🔄 Version Target
+      description: Which version is this PR targeting?
+      options:
+        - "1.0.0 (Current stable - bug fixes only)"
+        - "1.1.x (Next minor version - new features)"
+        - "1.2.x (Future version - major features)" 
+        - "2.0.x (Major version - breaking changes)"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: quality-checklist
+    attributes:
+      label: ✅ Quality Checklist
+      description: Please confirm you've completed these steps
+      options:
+        - label: Code follows project coding standards
+          required: true
+        - label: Code is properly formatted and indented
+          required: true
+        - label: No compiler warnings or errors
+          required: true
+        - label: Variable names are descriptive and consistent
+          required: true
+        - label: Functions have appropriate comments
+          required: true
+        - label: Error handling is implemented where needed
+          required: true
+
+  - type: checkboxes
+    id: functionality-checklist
+    attributes:
+      label: 🚀 Functionality Checklist
+      description: Please confirm functionality works
+      options:
+        - label: New features work as intended
+          required: true
+        - label: Existing functionality is not broken
+          required: true
+        - label: Commands produce expected output
+          required: true
+        - label: Authentication system works correctly
+          required: true
+        - label: System management features function properly
+          required: true
+
+  - type: checkboxes
+    id: documentation-checklist
+    attributes:
+      label: 📖 Documentation
+      description: Documentation updates
+      options:
+        - label: Code comments - Added/updated inline documentation
+        - label: README updates - Updated relevant README files  
+        - label: New features - Documented new commands or features
+        - label: Breaking changes - Documented any breaking changes
+
+  - type: textarea
+    id: additional-notes
+    attributes:
+      label: 💬 Additional Notes
+      description: Any additional information, concerns, or discussion points
+      placeholder: "Any additional context about this PR..."
+
+  - type: checkboxes
+    id: ready-for-review
+    attributes:
+      label: 🎉 Ready for Review
+      description: Final confirmation
+      options:
+        - label: I have tested these changes thoroughly
+          required: true
+        - label: I have updated documentation as needed
+          required: true  
+        - label: I have checked that no existing functionality is broken
+          required: true
+        - label: This PR is ready for review
+          required: true
+
+  - type: markdown
+    attributes:
+      value: |
+        ---
+        
+        **Thank you for contributing to WNU OS!** 🐧🪟
+        
+        Your contribution helps make Windows feel like home for Unix users!
