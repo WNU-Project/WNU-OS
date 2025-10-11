@@ -44,7 +44,7 @@ int poweroff_sequence(void) {
     double t = get_poweroff_unix_epoch_seconds();
 
     char* loadingbar = "####################################################################################################";
-    printf("\033[36mStarting systemd-reboot.service... 0%%\033[0m");
+    printf("\033[36mStarting systemd-poweroff.service... 0%%\033[0m");
     
     int total_length = strlen(loadingbar);
     

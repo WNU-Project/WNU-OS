@@ -287,7 +287,7 @@ int main(void) {
         int c;
         while ((c = getchar()) != '\n' && c != EOF);
         
-        // Read password with masking (show asterisks)
+        // Read password with Unix-style hidden input (no visual feedback)
         int i = 0;
         while (i < 99) {
             c = _getch(); // Get character without echoing to console
@@ -296,12 +296,12 @@ int main(void) {
                 break;
             } else if (c == '\b' || c == 127) { // Backspace pressed
                 if (i > 0) {
-                    printf("\b \b"); // Move back, print space, move back again
+                    // No visual feedback for backspace in Unix style
                     i--;
                 }
             } else if (c >= 32 && c <= 126) { // Printable characters
                 password[i] = c;
-                printf("*"); // Show asterisk instead of actual character
+                // No visual feedback - completely hidden like Unix
                 i++;
             }
         }
@@ -391,9 +391,14 @@ int main(void) {
             }
         }
 
-        // Print prompt (# for root, $ for normal user)
-        char prompt_symbol = isnormaluser ? '$' : '#';
-        printf("%s@%s:%s%c ", computername, username, display_path, prompt_symbol);
+        // Print prompt (# for root, $ for normal user) with colors
+        if (isnormaluser) {
+            // Green $ for normal user
+            printf("\033[32m%s@%s\033[0m:\033[34m%s\033[0m\033[32m$\033[0m ", computername, username, display_path);
+        } else {
+            // Red # for root user
+            printf("%s@%s:%s# ", computername, username, display_path);
+        }
 
         // Read command
         char command[256];
@@ -589,6 +594,60 @@ int main(void) {
          }
 
          printf("WNU OS %s 1.0.0 WNU-Kernel-1.0.0 #1 SMP FULL_RELEASE WNU/2025 %s WNU\n", computername, arch);
+        }
+        else if (strncmp(command, "ls", 2) == 0) {
+            // Custom ls implementation
+            WIN32_FIND_DATAA findData;
+            HANDLE hFind;
+            
+            // Check for flags
+            int show_hidden = 0;
+            int long_format = 0;
+            
+            if (strstr(command, "-a")) show_hidden = 1;
+            if (strstr(command, "-l")) long_format = 1;
+            
+            // Start finding files
+            hFind = FindFirstFileA("*", &findData);
+            if (hFind == INVALID_HANDLE_VALUE) {
+                printf("ls: cannot access '.': No such file or directory\n");
+            } else {
+                do {
+                    // Skip hidden files unless -a flag is used
+                    if (!show_hidden && findData.cFileName[0] == '.') {
+                        continue;
+                    }
+                    
+                    if (long_format) {
+                        // Long format: show permissions, size, date, name
+                        char* type = (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? "d" : "-";
+                        char permissions[] = "rwxrwxrwx"; // Simplified permissions
+                        
+                        // Convert file time to readable format
+                        SYSTEMTIME st;
+                        FileTimeToSystemTime(&findData.ftLastWriteTime, &st);
+                        
+                        // File size (directories show as 0)
+                        DWORD fileSize = (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? 0 : findData.nFileSizeLow;
+                        
+                        printf("%s%s %8lu %02d/%02d/%04d %02d:%02d %s\n",
+                               type, permissions, fileSize,
+                               st.wMonth, st.wDay, st.wYear,
+                               st.wHour, st.wMinute,
+                               findData.cFileName);
+                    } else {
+                        // Simple format: just names with colors
+                        if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                            // Blue for directories
+                            printf("\033[34m%s\033[0m\n", findData.cFileName);
+                        } else {
+                            // White for files
+                            printf("%s\n", findData.cFileName);
+                        }
+                    }
+                } while (FindNextFileA(hFind, &findData));
+                FindClose(hFind);
+            }
         }
 
         else if (strlen(command) > 0) {
