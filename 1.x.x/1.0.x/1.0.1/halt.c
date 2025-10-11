@@ -163,7 +163,8 @@ int halt_sequence() {
         "Swap partitions",
         "Network interfaces",
         "Hardware abstraction layer",
-        "Kernel modules"
+        "Kernel modules",
+        "Package manager (wsys2)"
     };
     
     int num_services = sizeof(services) / sizeof(services[0]);

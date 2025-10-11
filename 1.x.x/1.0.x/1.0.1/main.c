@@ -9,6 +9,7 @@
 #include "poweroff.h"
 #include "halt.h"
 #include "reboot.h"
+#include "wsys2/wsys2.h"  // Include WSYS2 package manager
 
 #ifndef PROCESSOR_ARCHITECTURE_ARM64
 #define PROCESSOR_ARCHITECTURE_ARM64 12
@@ -262,7 +263,7 @@ int main(void) {
 
     // --- Getty target login screen ---
     printf("\n");
-    printf("WNU OS 1.0.0 %s tty1\n", computername);
+    printf("WNU OS 1.0.1 %s tty1\n", computername);
     printf("\n");
     printf("%s login: ", computername);
     fflush(stdout);
@@ -595,7 +596,7 @@ int main(void) {
             break;
          }
 
-         printf("WNU OS %s 1.0.0 WNU-Kernel-1.0.0 #1 SMP FULL_RELEASE WNU/2025 %s WNU\n", computername, arch);
+         printf("WNU OS %s 1.0.1 WNU-Kernel-1.0.1 #1 SMP FULL_RELEASE WNU/2025 %s WNU\n", computername, arch);
         }
         else if (strncmp(command, "ls", 2) == 0) {
             // Custom ls implementation
@@ -651,7 +652,109 @@ int main(void) {
                 FindClose(hFind);
             }
         }
-
+        else if (strcmp(command, "wsys2") == 0) {
+            // Initialize WSYS2 system
+            if (wsys2_init() != 0) {
+                printf("\033[31mError:\033[0m Failed to initialize WSYS2 system\n");
+                continue;
+            }
+            
+            printf("\033[36m----------------------------------------\033[0m\n");
+            printf("\033[36m-         WSYS2 Package Manager        -\033[0m\n");
+            printf("\033[36m-            WNU OS 1.0.1              -\033[0m\n");
+            printf("\033[36m----------------------------------------\033[0m\n");
+            printf("Type 'help' for available commands, 'exit' to return to WNU OS shell\n\n");
+            
+            // WSYS2 shell loop
+            while (1) {
+                printf("\033[33mwsys2>\033[0m ");
+                fflush(stdout);
+                
+                char wsys2_input[256];
+                if (!fgets(wsys2_input, sizeof(wsys2_input), stdin)) {
+                    break; // EOF or error
+                }
+                
+                // Remove newline
+                wsys2_input[strcspn(wsys2_input, "\n")] = 0;
+                
+                // Skip empty input
+                if (strlen(wsys2_input) == 0) {
+                    continue;
+                }
+                
+                // Tokenize input
+                char* args[10];
+                int arg_count = 0;
+                char* token = strtok(wsys2_input, " ");
+                while (token && arg_count < 10) {
+                    args[arg_count++] = token;
+                    token = strtok(NULL, " ");
+                }
+                
+                if (arg_count == 0) continue; // Empty input
+                
+                // Handle WSYS2 commands
+                if (strcmp(args[0], "exit") == 0 || strcmp(args[0], "quit") == 0) {
+                    printf("Returning to WNU OS shell...\n\n");
+                    break;
+                } else if (strcmp(args[0], "install") == 0) {
+                    if (arg_count < 2) {
+                        printf("\033[31mError:\033[0m No package specified for installation\n");
+                        printf("Usage: install <package.wnupkg>\n");
+                        continue;
+                    }
+                    wsys2_install(args[1]);
+                } else if (strcmp(args[0], "remove") == 0 || strcmp(args[0], "uninstall") == 0) {
+                    if (arg_count < 2) {
+                        printf("\033[31mError:\033[0m No package specified for removal\n");
+                        printf("Usage: remove <package>\n");
+                        continue;
+                    }
+                    wsys2_remove(args[1]);
+                } else if (strcmp(args[0], "update") == 0) {
+                    wsys2_update();
+                } else if (strcmp(args[0], "search") == 0) {
+                    if (arg_count < 2) {
+                        wsys2_search(NULL); // Show all available packages
+                    } else {
+                        wsys2_search(args[1]);
+                    }
+                } else if (strcmp(args[0], "list") == 0) {
+                    wsys2_list();
+                } else if (strcmp(args[0], "info") == 0) {
+                    if (arg_count < 2) {
+                        printf("\033[31mError:\033[0m No package specified for info\n");
+                        printf("Usage: info <package>\n");
+                        continue;
+                    }
+                    wsys2_info(args[1]);
+                } else if (strcmp(args[0], "version") == 0 || strcmp(args[0], "--version") == 0) {
+                    printf("WSYS2 Package Manager v1.0.0\n");
+                    printf("Integrated into WNU OS 1.0.1\n");
+                    printf("Package format: .wnupkg\n");
+                } else if (strcmp(args[0], "help") == 0 || strcmp(args[0], "--help") == 0) {
+                    printf("WSYS2 Package Manager Commands:\n\n");
+                    printf("  \033[32minstall\033[0m <package>    Install a package from .wnupkg file\n");
+                    printf("  \033[31mremove\033[0m  <package>    Remove an installed package\n");
+                    printf("  \033[33mupdate\033[0m              Update all installed packages\n");
+                    printf("  \033[34msearch\033[0m  [term]      Search for available packages\n");
+                    printf("  \033[35mlist\033[0m                List all installed packages\n");
+                    printf("  \033[36minfo\033[0m    <package>    Show package information\n");
+                    printf("  \033[37mversion\033[0m             Show WSYS2 version\n");
+                    printf("  \033[37mhelp\033[0m                Show this help message\n");
+                    printf("  \033[31mexit\033[0m                Return to WNU OS shell\n");
+                    printf("\nExamples:\n");
+                    printf("  install hello-world.wnupkg\n");
+                    printf("  remove hello-world\n");
+                    printf("  search editor\n");
+                    printf("  list\n");
+                } else {
+                    printf("\033[31mError:\033[0m Unknown command '%s'\n", args[0]);
+                    printf("Type 'help' for available commands or 'exit' to return to WNU OS shell\n");
+                }
+            }
+        }
         else if (strlen(command) > 0) {
             system(command); // Run external command
         }

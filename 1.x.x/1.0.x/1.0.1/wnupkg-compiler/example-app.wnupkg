@@ -1,0 +1,51 @@
+[MANIFEST]
+name=example-app
+version=2.0.0
+description=Example application demonstrating WNUPKG package format
+author=WNU Project Team
+install_path=C:\\Program Files\\ExampleApp
+
+[FILES]
+FILE:files\bin\example-app.bat
+@echo off
+echo "Hello from Example App!"
+echo "This is a sample application compiled with WNUPKG Compiler"
+echo "Version: 2.0.0"
+echo "Thanks for using WNU OS package management!"
+pause
+FILE:files\docs\README.md
+# Example App Documentation
+
+## Overview
+This is a sample application demonstrating the WNUPKG package format and compiler.
+
+## Features
+- Simple batch script execution
+- Proper package structure
+- Installation and uninstallation scripts
+
+## Usage
+Run `example-app.bat` from the installation directory.
+
+## Installation Path
+Default: C:\Program Files\ExampleApp\
+
+## Author
+WNU Project Team
+
+## Version History
+- v2.0.0: Initial release with WNUPKG compiler
+
+[INSTALL]
+@echo off
+echo Installing Example App...
+echo Creating directories...
+mkdir "%INSTALL_PATH%\bin" 2>nul
+mkdir "%INSTALL_PATH%\docs" 2>nul
+echo Example App installed successfully to %INSTALL_PATH%!
+[UNINSTALL]
+@echo off
+echo Uninstalling Example App...
+echo Removing files from %INSTALL_PATH%...
+rmdir /s /q "%INSTALL_PATH%" 2>nul
+echo Example App uninstalled successfully!

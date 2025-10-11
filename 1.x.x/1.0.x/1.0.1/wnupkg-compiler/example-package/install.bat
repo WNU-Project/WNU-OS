@@ -1,0 +1,6 @@
+@echo off
+echo Installing Example App...
+echo Creating directories...
+mkdir "%INSTALL_PATH%\bin" 2>nul
+mkdir "%INSTALL_PATH%\docs" 2>nul
+echo Example App installed successfully to %INSTALL_PATH%!

@@ -161,6 +161,7 @@ int reboot_sequence() {
         "D-Bus system message bus",
         "User sessions",
         "Network interfaces"
+        "Package manager (wsys2)"
     };
     
     // Services to start (startup phase)
@@ -175,6 +176,7 @@ int reboot_sequence() {
         "SSH daemon (sshd)",
         "NetworkManager",
         "User session manager"
+        "Package manager (wsys2)"
     };
     
     int stop_count = sizeof(stop_services) / sizeof(stop_services[0]);

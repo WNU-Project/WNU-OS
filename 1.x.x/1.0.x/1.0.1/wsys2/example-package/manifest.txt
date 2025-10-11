@@ -1,0 +1,5 @@
+name=example-app
+version=2.0.0
+description=Example application demonstrating WNUPKG package format
+author=WNU Project Team
+install_path=C:\\Program Files\\ExampleApp
