@@ -19,18 +19,21 @@ The following versions of WNU OS are currently supported with security updates:
 WNU OS implements several security measures:
 
 ### Authentication Security
+
 - **Multi-method Authentication** - Windows Hello PIN, PowerShell verification, logon sessions
 - **Credential Protection** - Hidden password input (no visual feedback)
 - **Fallback Mechanisms** - Multiple authentication providers for reliability
 - **Session Management** - Proper user context switching and privilege separation
 
 ### System Security  
+
 - **Privilege Separation** - Distinct root and user modes
 - **Input Validation** - Command parsing and sanitization
 - **Windows API Integration** - Native Windows security mechanisms
 - **Access Control** - User-based directory restrictions
 
 ### Code Security
+
 - **Memory Safety** - Careful buffer management in C code
 - **Error Handling** - Proper error checking and recovery
 - **Secure Compilation** - Built with security-focused compiler flags
@@ -41,12 +44,14 @@ WNU OS implements several security measures:
 
 If you discover a security vulnerability in WNU OS, please report it responsibly:
 
-**🔒 Private Reporting (Preferred)**
+## **🔒 Private Reporting (Preferred)**
+
 - **GitHub Security Advisory**: Use GitHub's private vulnerability reporting
 - **Email**: Send details to the WNU-Project maintainers
 - **Encrypted Communication**: PGP/GPG keys available on request
 
-**📝 What to Include**
+## **📝 What to Include**
+
 - Detailed description of the vulnerability
 - Steps to reproduce the issue
 - Potential impact assessment
@@ -83,17 +88,20 @@ We classify vulnerabilities using the following categories:
 ## 🔍 Security Considerations for Users
 
 ### Installation Security
+
 - **Download from Official Sources** - Only use releases from official WNU-Project repositories
 - **Verify Integrity** - Check file hashes when available
 - **Build from Source** - Compile from verified source code for maximum security
 
 ### Usage Security
+
 - **Authentication** - Use strong Windows passwords or PINs
 - **Privilege Management** - Only use root access when necessary
 - **System Updates** - Keep Windows and dependencies updated
 - **Terminal Security** - Use trusted terminal applications
 
 ### Development Security
+
 - **Code Review** - All code changes undergo security review
 - **Secure Coding** - Follow secure C programming practices
 - **Dependency Management** - Minimal external dependencies
@@ -110,11 +118,13 @@ We recognize security researchers who help improve WNU OS security:
 ## 📚 Additional Resources
 
 ### Security Best Practices
+
 - [Windows Security Documentation](https://docs.microsoft.com/en-us/windows/security/)
 - [Secure C Programming Guidelines](https://wiki.sei.cmu.edu/confluence/display/c/SEI+CERT+C+Coding+Standard)
 - [Authentication Security Principles](https://owasp.org/www-project-authentication-cheat-sheet/)
 
 ### WNU OS Security Documentation
+
 - [Authentication System Overview](1.x.x/1.0.x/1.0.0/README.md#authentication)
 - [Build Security Guidelines](1.x.x/1.0.x/1.0.0/README.md#building)
 - [User Security Guide](1.x.x/1.0.x/1.0.0/README.md#security-features)
