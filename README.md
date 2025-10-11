@@ -123,7 +123,7 @@ This project is part of the larger WNU-Project initiative to bring Unix tools an
 
 ## 📄 License
 
-This project is licensed under [LICENSE] - see the LICENSE file for details.
+This project is licensed under [GPL-v3.0] - see the LICENSE file for details.
 
 ## 🎉 Acknowledgments
 
