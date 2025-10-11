@@ -1,0 +1,39 @@
+# Hello World Package v1.0.0
+# WNU Package (.wnupkg) - Demo Package
+
+[MANIFEST]
+name=hello-world
+version=1.0.0
+description=Hello World demo application for WNU OS
+author=WNU Project
+category=demo
+files=bin/hello.bat,bin/hello.exe
+install_path=bin
+
+[FILES]
+# bin/hello.bat
+@echo off
+echo =============================================
+echo    Hello from WNU OS Package Manager!
+echo =============================================
+echo Package: Hello World v1.0.0
+echo Installed via: WSYS2 Package Manager
+echo Author: WNU Project
+echo.
+echo This is a demo package showing how .wnupkg
+echo packages work in the WNU OS ecosystem.
+echo.
+echo Thank you for using WSYS2!
+pause
+
+[INSTALL]
+@echo off
+echo Installing Hello World package...
+echo Adding Hello World to PATH...
+echo Installation completed successfully!
+
+[UNINSTALL]
+@echo off
+echo Uninstalling Hello World package...
+echo Removing Hello World from PATH...
+echo Uninstallation completed successfully!

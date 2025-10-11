@@ -1,0 +1,74 @@
+# Sample Package v1.0.0
+# WNU Package (.wnupkg) - Demo Package for WSYS2
+
+[MANIFEST]
+name=sample-package
+version=1.0.0
+description=Sample demonstration package for WSYS2 testing
+author=WNU Project
+category=demo
+files=bin/sample.bat,bin/sample.exe,docs/readme.txt
+install_path=bin
+
+[FILES]
+# bin/sample.bat
+@echo off
+echo =============================================
+echo       WSYS2 Sample Package v1.0.0
+echo =============================================
+echo.
+echo This is a sample package demonstrating
+echo the WSYS2 package manager capabilities.
+echo.
+echo Package Information:
+echo   Name: sample-package
+echo   Version: 1.0.0  
+echo   Author: WNU Project
+echo   Category: demo
+echo.
+echo Successfully installed via WSYS2!
+echo.
+echo Commands available:
+echo   sample         - Show this information
+echo   sample --help  - Show help
+echo   sample test    - Run package test
+echo.
+if "%1"=="test" (
+    echo Running package test...
+    echo ✓ Package is working correctly!
+)
+if "%1"=="--help" (
+    echo Sample Package Help
+    echo Usage: sample [command]
+    echo Commands: test, --help
+)
+pause
+
+# docs/readme.txt
+WSYS2 Sample Package
+===================
+
+This is a demonstration package for the WSYS2 package manager.
+
+Features demonstrated:
+- Package manifest with metadata
+- File installation
+- PATH integration
+- Install/uninstall scripts
+
+This package can be used to test WSYS2 functionality.
+
+[INSTALL]
+@echo off
+echo Installing Sample Package...
+echo Creating directory structure...
+echo Copying files...
+echo Adding to PATH...
+echo ✓ Sample package installed successfully!
+
+[UNINSTALL]
+@echo off
+echo Uninstalling Sample Package...
+echo Removing files...
+echo Removing from PATH...
+echo ✓ Sample package removed successfully!
