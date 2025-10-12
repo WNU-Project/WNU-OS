@@ -464,6 +464,9 @@ int wsys2_online_install(const char* package_name) {
     if (strcmp(package_name, "wnu-dev-tools") == 0) {
         package_url = "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-dev-tools/wnu-dev-tools.wnupkg";
     }
+    if (strcmp(package_name, "wnu-nano") == 0) {
+        package_url = "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-nano/wnu-nano.wnupkg";
+    }
     
     if (!package_url) {
         printf("\033[31m✗ Package '%s' not found in repository\033[0m\n", package_name);
@@ -565,6 +568,13 @@ int wsys2_online_list(void) {
             "1.0.0", 
             "WNU OS development toolkit", 
             "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-dev-tools/wnu-dev-tools.wnupkg",
+            "Development"
+        },
+        {
+            "wnu-nano",
+            "1.0.0",
+            "Lightweight text editor for WNU OS",
+            "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-nano/wnu-nano.wnupkg",
             "Development"
         }
     };
