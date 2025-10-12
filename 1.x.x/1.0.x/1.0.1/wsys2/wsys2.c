@@ -674,7 +674,25 @@ int wsys2_run(const char* package_spec, const char* program_name, char** args, i
                     HANDLE hSubFind = FindFirstFileA(subdir_pattern, &subFindData);
                     if (hSubFind != INVALID_HANDLE_VALUE) {
                         do {
-                            if (!(subFindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+                            if (subFindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                                if (strcmp(subFindData.cFileName, ".") != 0 && strcmp(subFindData.cFileName, "..") != 0) {
+                                    printf("    [DIR]  %s/%s/\n", findData.cFileName, subFindData.cFileName);
+                                    
+                                    // Check one more level deep
+                                    char deep_pattern[1024];
+                                    snprintf(deep_pattern, sizeof(deep_pattern), "%s\\%s\\%s\\*", pkg->install_path, findData.cFileName, subFindData.cFileName);
+                                    WIN32_FIND_DATAA deepFindData;
+                                    HANDLE hDeepFind = FindFirstFileA(deep_pattern, &deepFindData);
+                                    if (hDeepFind != INVALID_HANDLE_VALUE) {
+                                        do {
+                                            if (!(deepFindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+                                                printf("      [FILE] %s/%s/%s\n", findData.cFileName, subFindData.cFileName, deepFindData.cFileName);
+                                            }
+                                        } while (FindNextFileA(hDeepFind, &deepFindData));
+                                        FindClose(hDeepFind);
+                                    }
+                                }
+                            } else {
                                 printf("    [FILE] %s/%s\n", findData.cFileName, subFindData.cFileName);
                             }
                         } while (FindNextFileA(hSubFind, &subFindData));
@@ -726,7 +744,7 @@ int wsys2_run(const char* package_spec, const char* program_name, char** args, i
         // If still not found, try to find any .exe file in multiple directories
         if (!found_executable) {
             // Try different possible directories
-            char* search_dirs[] = {"bin", ".", "exe", "programs", NULL};
+            char* search_dirs[] = {"bin", ".", "exe", "programs", "files", "files\\bin", "files\\exe", "files\\programs", NULL};
             
             for (int dir_idx = 0; search_dirs[dir_idx] != NULL && !found_executable; dir_idx++) {
                 char search_pattern[1024];
@@ -772,7 +790,7 @@ int wsys2_run(const char* package_spec, const char* program_name, char** args, i
         snprintf(search_pattern, sizeof(search_pattern), "%s\\**\\*.exe", pkg->install_path);
         
         // Manual recursive search since Windows FindFirstFile doesn't do recursive search
-        char* search_locations[] = {".", "bin", "exe", "programs", "files", NULL};
+        char* search_locations[] = {".", "files\\bin", "files\\exe", "files\\programs", NULL};
         int found_any = 0;
         
         for (int i = 0; search_locations[i] != NULL; i++) {
