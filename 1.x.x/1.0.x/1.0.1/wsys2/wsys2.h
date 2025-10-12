@@ -59,5 +59,6 @@ int wsys2_create_directories(void);
 char* wsys2_get_package_dir(int user_install);
 int wsys2_is_admin(void);
 void wsys2_print_package(const Package* pkg);
+int wsys2_find_executable_recursive(const char* base_path, char* exe_name, char* exe_dir, char* exe_path);
 
 #endif // WSYS2_H

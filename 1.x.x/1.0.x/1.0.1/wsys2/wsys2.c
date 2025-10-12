@@ -607,6 +607,61 @@ int wsys2_online_list(void) {
     return 0;
 }
 
+// Recursive function to find .exe files in package directory
+int wsys2_find_executable_recursive(const char* base_path, char* exe_name, char* exe_dir, char* exe_path) {
+    char search_pattern[1024];
+    
+    // Search for .exe files in current directory
+    snprintf(search_pattern, sizeof(search_pattern), "%s\\*.exe", base_path);
+    WIN32_FIND_DATAA findData;
+    HANDLE hFind = FindFirstFileA(search_pattern, &findData);
+    
+    if (hFind != INVALID_HANDLE_VALUE) {
+        // Found an exe file, use it
+        strcpy(exe_name, findData.cFileName);
+        char* dot = strrchr(exe_name, '.');
+        if (dot) *dot = '\0';  // Remove .exe extension
+        
+        // Get relative directory path
+        const char* relative_path = base_path + strlen(wsys2_get_package_dir(0)) + 1;
+        const char* package_name_end = strchr(relative_path, '\\');
+        if (package_name_end) {
+            strcpy(exe_dir, package_name_end + 1);
+        } else {
+            strcpy(exe_dir, "root");
+        }
+        
+        snprintf(exe_path, 1024, "%s\\%s", base_path, findData.cFileName);
+        FindClose(hFind);
+        return 1;
+    }
+    
+    // Search in subdirectories
+    snprintf(search_pattern, sizeof(search_pattern), "%s\\*", base_path);
+    hFind = FindFirstFileA(search_pattern, &findData);
+    
+    if (hFind != INVALID_HANDLE_VALUE) {
+        do {
+            if ((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && 
+                strcmp(findData.cFileName, ".") != 0 && 
+                strcmp(findData.cFileName, "..") != 0) {
+                
+                char subdir_path[1024];
+                snprintf(subdir_path, sizeof(subdir_path), "%s\\%s", base_path, findData.cFileName);
+                
+                // Recursively search in subdirectory
+                if (wsys2_find_executable_recursive(subdir_path, exe_name, exe_dir, exe_path)) {
+                    FindClose(hFind);
+                    return 1;
+                }
+            }
+        } while (FindNextFileA(hFind, &findData));
+        FindClose(hFind);
+    }
+    
+    return 0;
+}
+
 // Run a program from an installed package
 int wsys2_run(const char* package_spec, const char* program_name, char** args, int arg_count) {
     printf("Running program from package: %s\n", package_spec);
@@ -743,38 +798,13 @@ int wsys2_run(const char* package_spec, const char* program_name, char** args, i
         
         // If still not found, try to find any .exe file in multiple directories
         if (!found_executable) {
-            // Try different possible directories
-            char* search_dirs[] = {"bin", ".", "exe", "programs", "files", "files\\bin", "files\\exe", "files\\programs", NULL};
+            // Recursive search function for finding .exe files
+            char exe_name[512];
+            char exe_dir[512];
+            found_executable = wsys2_find_executable_recursive(pkg->install_path, exe_name, exe_dir, exe_path);
             
-            for (int dir_idx = 0; search_dirs[dir_idx] != NULL && !found_executable; dir_idx++) {
-                char search_pattern[1024];
-                if (strcmp(search_dirs[dir_idx], ".") == 0) {
-                    // Search in root package directory
-                    snprintf(search_pattern, sizeof(search_pattern), "%s\\*.exe", pkg->install_path);
-                } else {
-                    // Search in specific subdirectory
-                    snprintf(search_pattern, sizeof(search_pattern), "%s\\%s\\*.exe", pkg->install_path, search_dirs[dir_idx]);
-                }
-                
-                WIN32_FIND_DATAA findData;
-                HANDLE hFind = FindFirstFileA(search_pattern, &findData);
-                
-                if (hFind != INVALID_HANDLE_VALUE) {
-                    // Use the first .exe file found
-                    if (strcmp(search_dirs[dir_idx], ".") == 0) {
-                        snprintf(exe_path, sizeof(exe_path), "%s\\%s", pkg->install_path, findData.cFileName);
-                    } else {
-                        snprintf(exe_path, sizeof(exe_path), "%s\\%s\\%s", pkg->install_path, search_dirs[dir_idx], findData.cFileName);
-                    }
-                    found_executable = 1;
-                    
-                    char* dot = strrchr(findData.cFileName, '.');
-                    if (dot) *dot = '\0';  // Remove .exe extension for display
-                    printf("Auto-detected executable: %s in %s directory\n", findData.cFileName, 
-                           strcmp(search_dirs[dir_idx], ".") == 0 ? "root" : search_dirs[dir_idx]);
-                    FindClose(hFind);
-                    break;
-                }
+            if (found_executable) {
+                printf("Auto-detected executable: %s in %s directory\n", exe_name, exe_dir);
             }
         }
     }
