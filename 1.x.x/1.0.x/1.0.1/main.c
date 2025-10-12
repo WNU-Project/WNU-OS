@@ -751,6 +751,19 @@ int main(void) {
                         printf("\033[31mError:\033[0m Unknown online command '%s'\n", args[1]);
                         printf("Available online commands: update, search, install, list\n");
                     }
+                } else if (strcmp(args[0], "run") == 0) {
+                    if (arg_count < 2) {
+                        printf("\033[31mError:\033[0m No package specified to run\n");
+                        printf("Usage: run <package>\n");
+                        continue;
+                    }
+                    
+                    const char* package_spec = args[1];
+                    const char* program_name = (arg_count > 2) ? args[2] : NULL;
+                    char** run_args = (arg_count > 3) ? &args[3] : NULL;
+                    int run_arg_count = (arg_count > 3) ? arg_count - 3 : 0;
+                    
+                    wsys2_run(package_spec, program_name, run_args, run_arg_count);
                 } else if (strcmp(args[0], "info") == 0) {
                     if (arg_count < 2) {
                         printf("\033[31mError:\033[0m No package specified for info\n");

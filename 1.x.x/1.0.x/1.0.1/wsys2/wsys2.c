@@ -655,17 +655,61 @@ int wsys2_run(const char* package_spec, const char* program_name, char** args, i
     
     // Build path to executable
     char exe_path[1024];
+    int found_executable = 0;
+    
     if (program_name) {
         // Specific program requested
         snprintf(exe_path, sizeof(exe_path), "%s\\bin\\%s.exe", pkg->install_path, program_name);
+        if (GetFileAttributesA(exe_path) != INVALID_FILE_ATTRIBUTES) {
+            found_executable = 1;
+        }
     } else {
-        // Try to run main package executable
-        snprintf(exe_path, sizeof(exe_path), "%s\\bin\\%s.exe", pkg->install_path, pkg->name);
+        // Try to find main executable - try multiple naming patterns
+        char* possible_names[] = {
+            pkg->name,                    // wnu-nano
+            NULL,                        // Will be set to wnuos-{name}
+            NULL                         // Sentinel
+        };
+        
+        // Generate wnuos-prefixed name
+        char wnuos_name[512];
+        snprintf(wnuos_name, sizeof(wnuos_name), "wnuos-%s", pkg->name);
+        possible_names[1] = wnuos_name;
+        
+        // Try each possible name
+        for (int i = 0; possible_names[i] != NULL; i++) {
+            snprintf(exe_path, sizeof(exe_path), "%s\\bin\\%s.exe", pkg->install_path, possible_names[i]);
+            if (GetFileAttributesA(exe_path) != INVALID_FILE_ATTRIBUTES) {
+                found_executable = 1;
+                printf("Found executable: %s\n", possible_names[i]);
+                break;
+            }
+        }
+        
+        // If still not found, try to find any .exe file in bin directory
+        if (!found_executable) {
+            char bin_dir[1024];
+            snprintf(bin_dir, sizeof(bin_dir), "%s\\bin\\*.exe", pkg->install_path);
+            
+            WIN32_FIND_DATAA findData;
+            HANDLE hFind = FindFirstFileA(bin_dir, &findData);
+            
+            if (hFind != INVALID_HANDLE_VALUE) {
+                // Use the first .exe file found
+                snprintf(exe_path, sizeof(exe_path), "%s\\bin\\%s", pkg->install_path, findData.cFileName);
+                found_executable = 1;
+                
+                char* dot = strrchr(findData.cFileName, '.');
+                if (dot) *dot = '\0';  // Remove .exe extension for display
+                printf("Auto-detected executable: %s\n", findData.cFileName);
+                FindClose(hFind);
+            }
+        }
     }
     
-    // Check if executable exists
-    if (GetFileAttributesA(exe_path) == INVALID_FILE_ATTRIBUTES) {
-        printf("\033[31m✗ Executable not found: %s\033[0m\n", exe_path);
+    // Check if we found an executable
+    if (!found_executable) {
+        printf("\033[31m✗ No executable found for package: %s\033[0m\n", pkg->name);
         
         // List available executables in bin directory
         char bin_dir[1024];
