@@ -13,7 +13,7 @@ OBJS = $(SRCS:.c=.o)
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ -lgdi32 -luser32 -ladvapi32 -lnetapi32 -lkernel32 -Wl,-subsystem,console
+	$(CC) $(CFLAGS) -o $@ $^ -lgdi32 -luser32 -ladvapi32 -lnetapi32 -lkernel32 -Wl,-subsystem,console -lwininet
 
 # Compile .c to .o
 %.o: %.c

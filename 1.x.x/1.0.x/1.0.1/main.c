@@ -729,26 +729,62 @@ int main(void) {
                         continue;
                     }
                     wsys2_info(args[1]);
+                } else if (strcmp(args[0], "online") == 0 && arg_count >= 2) {
+                    if (strcmp(args[1], "update") == 0) {
+                        wsys2_online_update();
+                    } else if (strcmp(args[1], "search") == 0) {
+                        if (arg_count >= 3) {
+                            wsys2_online_search(args[2]);
+                        } else {
+                            wsys2_online_search(NULL);
+                        }
+                    } else if (strcmp(args[1], "install") == 0) {
+                        if (arg_count >= 3) {
+                            wsys2_online_install(args[2]);
+                        } else {
+                            printf("\033[31mError:\033[0m No package specified for online installation\n");
+                            printf("Usage: online install <package>\n");
+                        }
+                    } else if (strcmp(args[1], "list") == 0) {
+                        wsys2_online_list();
+                    } else {
+                        printf("\033[31mError:\033[0m Unknown online command '%s'\n", args[1]);
+                        printf("Available online commands: update, search, install, list\n");
+                    }
+                } else if (strcmp(args[0], "info") == 0) {
+                    if (arg_count < 2) {
+                        printf("\033[31mError:\033[0m No package specified for info\n");
+                        printf("Usage: info <package>\n");
+                        continue;
+                    }
+                    wsys2_info(args[1]);
                 } else if (strcmp(args[0], "version") == 0 || strcmp(args[0], "--version") == 0) {
                     printf("WSYS2 Package Manager v1.0.0\n");
                     printf("Integrated into WNU OS 1.0.1\n");
                     printf("Package format: .wnupkg\n");
                 } else if (strcmp(args[0], "help") == 0 || strcmp(args[0], "--help") == 0) {
                     printf("WSYS2 Package Manager Commands:\n\n");
+                    printf("Local Package Management:\n");
                     printf("  \033[32minstall\033[0m <package>    Install a package from .wnupkg file\n");
                     printf("  \033[31mremove\033[0m  <package>    Remove an installed package\n");
                     printf("  \033[33mupdate\033[0m              Update all installed packages\n");
                     printf("  \033[34msearch\033[0m  [term]      Search for available packages\n");
                     printf("  \033[35mlist\033[0m                List all installed packages\n");
                     printf("  \033[36minfo\033[0m    <package>    Show package information\n");
+                    printf("\nOnline Package Management:\n");
+                    printf("  \033[32monline install\033[0m <pkg> Install package from online repository\n");
+                    printf("  \033[34monline search\033[0m [term] Search online repository\n");
+                    printf("  \033[35monline list\033[0m          List available online packages\n");
+                    printf("  \033[33monline update\033[0m        Update online package cache\n");
+                    printf("\nSystem Commands:\n");
                     printf("  \033[37mversion\033[0m             Show WSYS2 version\n");
                     printf("  \033[37mhelp\033[0m                Show this help message\n");
                     printf("  \033[31mexit\033[0m                Return to WNU OS shell\n");
                     printf("\nExamples:\n");
                     printf("  install hello-world.wnupkg\n");
+                    printf("  online install wnu-dev-tools\n");
+                    printf("  online list\n");
                     printf("  remove hello-world\n");
-                    printf("  search editor\n");
-                    printf("  list\n");
                 } else {
                     printf("\033[31mError:\033[0m Unknown command '%s'\n", args[0]);
                     printf("Type 'help' for available commands or 'exit' to return to WNU OS shell\n");
