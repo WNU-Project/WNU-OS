@@ -652,6 +652,43 @@ int wsys2_run(const char* package_spec, const char* program_name, char** args, i
     }
     
     printf("Found installed package: %s v%s by %s\n", pkg->name, pkg->version, pkg->author);
+    printf("Package installed at: %s\n", pkg->install_path);
+    
+    // Debug: List all directories and files in the package
+    printf("Package contents:\n");
+    char search_pattern[1024];
+    snprintf(search_pattern, sizeof(search_pattern), "%s\\*", pkg->install_path);
+    
+    WIN32_FIND_DATAA findData;
+    HANDLE hFind = FindFirstFileA(search_pattern, &findData);
+    if (hFind != INVALID_HANDLE_VALUE) {
+        do {
+            if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                if (strcmp(findData.cFileName, ".") != 0 && strcmp(findData.cFileName, "..") != 0) {
+                    printf("  [DIR]  %s/\n", findData.cFileName);
+                    
+                    // List files in subdirectories
+                    char subdir_pattern[1024];
+                    snprintf(subdir_pattern, sizeof(subdir_pattern), "%s\\%s\\*", pkg->install_path, findData.cFileName);
+                    WIN32_FIND_DATAA subFindData;
+                    HANDLE hSubFind = FindFirstFileA(subdir_pattern, &subFindData);
+                    if (hSubFind != INVALID_HANDLE_VALUE) {
+                        do {
+                            if (!(subFindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+                                printf("    [FILE] %s/%s\n", findData.cFileName, subFindData.cFileName);
+                            }
+                        } while (FindNextFileA(hSubFind, &subFindData));
+                        FindClose(hSubFind);
+                    }
+                }
+            } else {
+                printf("  [FILE] %s\n", findData.cFileName);
+            }
+        } while (FindNextFileA(hFind, &findData));
+        FindClose(hFind);
+    } else {
+        printf("  Could not read package directory: %s\n", pkg->install_path);
+    }
     
     // Build path to executable
     char exe_path[1024];
@@ -686,23 +723,40 @@ int wsys2_run(const char* package_spec, const char* program_name, char** args, i
             }
         }
         
-        // If still not found, try to find any .exe file in bin directory
+        // If still not found, try to find any .exe file in multiple directories
         if (!found_executable) {
-            char bin_dir[1024];
-            snprintf(bin_dir, sizeof(bin_dir), "%s\\bin\\*.exe", pkg->install_path);
+            // Try different possible directories
+            char* search_dirs[] = {"bin", ".", "exe", "programs", NULL};
             
-            WIN32_FIND_DATAA findData;
-            HANDLE hFind = FindFirstFileA(bin_dir, &findData);
-            
-            if (hFind != INVALID_HANDLE_VALUE) {
-                // Use the first .exe file found
-                snprintf(exe_path, sizeof(exe_path), "%s\\bin\\%s", pkg->install_path, findData.cFileName);
-                found_executable = 1;
+            for (int dir_idx = 0; search_dirs[dir_idx] != NULL && !found_executable; dir_idx++) {
+                char search_pattern[1024];
+                if (strcmp(search_dirs[dir_idx], ".") == 0) {
+                    // Search in root package directory
+                    snprintf(search_pattern, sizeof(search_pattern), "%s\\*.exe", pkg->install_path);
+                } else {
+                    // Search in specific subdirectory
+                    snprintf(search_pattern, sizeof(search_pattern), "%s\\%s\\*.exe", pkg->install_path, search_dirs[dir_idx]);
+                }
                 
-                char* dot = strrchr(findData.cFileName, '.');
-                if (dot) *dot = '\0';  // Remove .exe extension for display
-                printf("Auto-detected executable: %s\n", findData.cFileName);
-                FindClose(hFind);
+                WIN32_FIND_DATAA findData;
+                HANDLE hFind = FindFirstFileA(search_pattern, &findData);
+                
+                if (hFind != INVALID_HANDLE_VALUE) {
+                    // Use the first .exe file found
+                    if (strcmp(search_dirs[dir_idx], ".") == 0) {
+                        snprintf(exe_path, sizeof(exe_path), "%s\\%s", pkg->install_path, findData.cFileName);
+                    } else {
+                        snprintf(exe_path, sizeof(exe_path), "%s\\%s\\%s", pkg->install_path, search_dirs[dir_idx], findData.cFileName);
+                    }
+                    found_executable = 1;
+                    
+                    char* dot = strrchr(findData.cFileName, '.');
+                    if (dot) *dot = '\0';  // Remove .exe extension for display
+                    printf("Auto-detected executable: %s in %s directory\n", findData.cFileName, 
+                           strcmp(search_dirs[dir_idx], ".") == 0 ? "root" : search_dirs[dir_idx]);
+                    FindClose(hFind);
+                    break;
+                }
             }
         }
     }
@@ -710,25 +764,48 @@ int wsys2_run(const char* package_spec, const char* program_name, char** args, i
     // Check if we found an executable
     if (!found_executable) {
         printf("\033[31m✗ No executable found for package: %s\033[0m\n", pkg->name);
+        printf("Searched directories: bin/, root, exe/, programs/\n");
         
-        // List available executables in bin directory
-        char bin_dir[1024];
-        snprintf(bin_dir, sizeof(bin_dir), "%s\\bin\\*.exe", pkg->install_path);
+        // List all .exe files found anywhere in the package
+        printf("Searching for ALL .exe files in package...\n");
+        char search_pattern[1024];
+        snprintf(search_pattern, sizeof(search_pattern), "%s\\**\\*.exe", pkg->install_path);
         
-        WIN32_FIND_DATAA findData;
-        HANDLE hFind = FindFirstFileA(bin_dir, &findData);
+        // Manual recursive search since Windows FindFirstFile doesn't do recursive search
+        char* search_locations[] = {".", "bin", "exe", "programs", "files", NULL};
+        int found_any = 0;
         
-        if (hFind != INVALID_HANDLE_VALUE) {
-            printf("Available executables in package:\n");
-            do {
-                char* dot = strrchr(findData.cFileName, '.');
-                if (dot) *dot = '\0';  // Remove .exe extension for display
-                printf("  %s\n", findData.cFileName);
-            } while (FindNextFileA(hFind, &findData));
-            FindClose(hFind);
-            printf("Usage: wsys2 run %s <program_name>\n", package_spec);
+        for (int i = 0; search_locations[i] != NULL; i++) {
+            char location_pattern[1024];
+            if (strcmp(search_locations[i], ".") == 0) {
+                snprintf(location_pattern, sizeof(location_pattern), "%s\\*.exe", pkg->install_path);
+            } else {
+                snprintf(location_pattern, sizeof(location_pattern), "%s\\%s\\*.exe", pkg->install_path, search_locations[i]);
+            }
+            
+            WIN32_FIND_DATAA findData;
+            HANDLE hFind = FindFirstFileA(location_pattern, &findData);
+            
+            if (hFind != INVALID_HANDLE_VALUE) {
+                if (!found_any) {
+                    printf("Found .exe files in package:\n");
+                    found_any = 1;
+                }
+                do {
+                    char* dot = strrchr(findData.cFileName, '.');
+                    if (dot) *dot = '\0';  // Remove .exe extension for display
+                    printf("  %s (in %s directory)\n", findData.cFileName, 
+                           strcmp(search_locations[i], ".") == 0 ? "root" : search_locations[i]);
+                } while (FindNextFileA(hFind, &findData));
+                FindClose(hFind);
+            }
+        }
+        
+        if (!found_any) {
+            printf("No .exe files found anywhere in the package directory\n");
+            printf("This might indicate a package installation issue\n");
         } else {
-            printf("No executables found in package bin directory\n");
+            printf("Usage: wsys2 run %s <program_name>\n", package_spec);
         }
         
         free(pkg);
