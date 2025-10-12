@@ -22,6 +22,7 @@ void print_help() {
     printf("  \033[34msearch\033[0m  <term>      Search for available packages\n");
     printf("  \033[35mlist\033[0m                List all installed packages\n");
     printf("  \033[36minfo\033[0m    <package>    Show package information\n");
+    printf("  \033[92mrun\033[0m     <package>    Run program from installed package\n");
     printf("  \033[95monline\033[0m  <command>    Online package operations\n");
     printf("  \033[37mversion\033[0m             Show WSYS2 version\n");
     printf("  \033[37mhelp\033[0m                Show this help message\n");
@@ -36,6 +37,8 @@ void print_help() {
     printf("  wsys2 remove vim\n");
     printf("  wsys2 list\n");
     printf("  wsys2 search editor\n");
+    printf("  wsys2 run WNU-Project@wnu-dev-tools gcc\n");
+    printf("  wsys2 run wnu-nano\n");
     printf("  wsys2 online update\n");
     printf("  wsys2 online install git\n");
     printf("  wsys2 online search dev\n");
@@ -91,6 +94,23 @@ int main(int argc, char *argv[]) {
             return 1;
         }
         return wsys2_info(argv[2]);
+    }
+    else if (strcmp(command, "run") == 0) {
+        if (argc < 3) {
+            printf("\033[31mError:\033[0m No package specified for run\n");
+            printf("Usage: wsys2 run <Maintainer@package|package> [program] [args...]\n");
+            printf("Examples:\n");
+            printf("  wsys2 run WNU-Project@wnu-dev-tools gcc\n");
+            printf("  wsys2 run wnu-nano\n");
+            return 1;
+        }
+        
+        const char* package_spec = argv[2];
+        const char* program_name = (argc > 3) ? argv[3] : NULL;
+        char** run_args = (argc > 4) ? &argv[4] : NULL;
+        int run_arg_count = (argc > 4) ? argc - 4 : 0;
+        
+        return wsys2_run(package_spec, program_name, run_args, run_arg_count);
     }
     else if (strcmp(command, "online") == 0) {
         if (argc < 3) {
@@ -197,6 +217,19 @@ int main(int argc, char *argv[]) {
                     continue;
                 }
                 wsys2_info(args[1]);
+            } else if (strcmp(args[0], "run") == 0) {
+                if (arg_count < 2) {
+                    printf("\033[31mError:\033[0m No package specified for run\n");
+                    printf("Usage: run <Maintainer@package|package> [program] [args...]\n");
+                    continue;
+                }
+                
+                const char* package_spec = args[1];
+                const char* program_name = (arg_count > 2) ? args[2] : NULL;
+                char** run_args = (arg_count > 3) ? &args[3] : NULL;
+                int run_arg_count = (arg_count > 3) ? arg_count - 3 : 0;
+                
+                wsys2_run(package_spec, program_name, run_args, run_arg_count);
             } else if (strcmp(args[0], "version") == 0 || strcmp(args[0], "--version") == 0) {
                 printf("WSYS2 Package Manager v1.0.0\n");
                 printf("Part of WNU OS 1.0.1\n");

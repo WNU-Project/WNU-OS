@@ -607,6 +607,135 @@ int wsys2_online_list(void) {
     return 0;
 }
 
+// Run a program from an installed package
+int wsys2_run(const char* package_spec, const char* program_name, char** args, int arg_count) {
+    printf("Running program from package: %s\n", package_spec);
+    
+    // Parse package specification (Maintainer@pkgname or just pkgname)
+    char maintainer[128] = {0};
+    char pkgname[256] = {0};
+    
+    const char* at_symbol = strchr(package_spec, '@');
+    if (at_symbol) {
+        // Format: Maintainer@pkgname
+        size_t maintainer_len = at_symbol - package_spec;
+        if (maintainer_len >= sizeof(maintainer)) maintainer_len = sizeof(maintainer) - 1;
+        strncpy(maintainer, package_spec, maintainer_len);
+        maintainer[maintainer_len] = '\0';
+        
+        strncpy(pkgname, at_symbol + 1, sizeof(pkgname) - 1);
+    } else {
+        // Format: just pkgname
+        strncpy(pkgname, package_spec, sizeof(pkgname) - 1);
+    }
+    
+    printf("Looking for package: %s", pkgname);
+    if (strlen(maintainer) > 0) {
+        printf(" (by %s)", maintainer);
+    }
+    printf("\n");
+    
+    // Find the installed package
+    Package* pkg = package_find_installed(pkgname);
+    if (!pkg) {
+        printf("\033[31m✗ Package '%s' is not installed\033[0m\n", pkgname);
+        printf("Use 'wsys2 list' to see installed packages\n");
+        return 1;
+    }
+    
+    // Verify maintainer if specified
+    if (strlen(maintainer) > 0 && strlen(pkg->author) > 0) {
+        if (strcmp(pkg->author, maintainer) != 0) {
+            printf("\033[33m! Warning: Package author '%s' doesn't match specified maintainer '%s'\033[0m\n", 
+                   pkg->author, maintainer);
+        }
+    }
+    
+    printf("Found installed package: %s v%s by %s\n", pkg->name, pkg->version, pkg->author);
+    
+    // Build path to executable
+    char exe_path[1024];
+    if (program_name) {
+        // Specific program requested
+        snprintf(exe_path, sizeof(exe_path), "%s\\bin\\%s.exe", pkg->install_path, program_name);
+    } else {
+        // Try to run main package executable
+        snprintf(exe_path, sizeof(exe_path), "%s\\bin\\%s.exe", pkg->install_path, pkg->name);
+    }
+    
+    // Check if executable exists
+    if (GetFileAttributesA(exe_path) == INVALID_FILE_ATTRIBUTES) {
+        printf("\033[31m✗ Executable not found: %s\033[0m\n", exe_path);
+        
+        // List available executables in bin directory
+        char bin_dir[1024];
+        snprintf(bin_dir, sizeof(bin_dir), "%s\\bin\\*.exe", pkg->install_path);
+        
+        WIN32_FIND_DATAA findData;
+        HANDLE hFind = FindFirstFileA(bin_dir, &findData);
+        
+        if (hFind != INVALID_HANDLE_VALUE) {
+            printf("Available executables in package:\n");
+            do {
+                char* dot = strrchr(findData.cFileName, '.');
+                if (dot) *dot = '\0';  // Remove .exe extension for display
+                printf("  %s\n", findData.cFileName);
+            } while (FindNextFileA(hFind, &findData));
+            FindClose(hFind);
+            printf("Usage: wsys2 run %s <program_name>\n", package_spec);
+        } else {
+            printf("No executables found in package bin directory\n");
+        }
+        
+        free(pkg);
+        return 1;
+    }
+    
+    printf("Executing: %s\n", exe_path);
+    
+    // Build command line arguments
+    char command_line[2048];
+    strcpy(command_line, exe_path);
+    
+    // Add arguments if provided
+    for (int i = 0; i < arg_count; i++) {
+        strcat(command_line, " ");
+        strcat(command_line, args[i]);
+    }
+    
+    printf("Command: %s\n", command_line);
+    
+    // Execute the program
+    STARTUPINFOA si = {0};
+    PROCESS_INFORMATION pi = {0};
+    si.cb = sizeof(si);
+    
+    if (CreateProcessA(NULL, command_line, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+        printf("\033[32m✓ Program started successfully\033[0m\n");
+        printf("Process ID: %lu\n", pi.dwProcessId);
+        
+        // Wait for process to complete
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        
+        // Get exit code
+        DWORD exit_code;
+        GetExitCodeProcess(pi.hProcess, &exit_code);
+        
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        
+        printf("Program exited with code: %lu\n", exit_code);
+        
+        free(pkg);
+        return (exit_code == 0) ? 0 : 1;
+    } else {
+        printf("\033[31m✗ Failed to start program: %s\033[0m\n", exe_path);
+        printf("Error code: %lu\n", GetLastError());
+        free(pkg);
+        return 1;
+    }
+}
+
 // Show online package information
 int wsys2_online_info(const char* package_name) {
     printf("\033[95mOnline package information for: %s\033[0m\n", package_name);

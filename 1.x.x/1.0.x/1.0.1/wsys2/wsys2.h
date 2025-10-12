@@ -36,6 +36,7 @@ int wsys2_update(void);
 int wsys2_search(const char* search_term);
 int wsys2_list(void);
 int wsys2_info(const char* package_name);
+int wsys2_run(const char* package_spec, const char* program_name, char** args, int arg_count);
 
 // Online package functions
 int wsys2_online_update(void);
