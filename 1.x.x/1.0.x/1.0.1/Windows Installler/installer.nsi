@@ -3,7 +3,7 @@
 
 # Define installer information
 !define PRODUCT_NAME "WNU OS"
-!define PRODUCT_VERSION "1.0.0"
+!define PRODUCT_VERSION "1.0.1"
 !define PRODUCT_PUBLISHER "WNU Project"
 !define PRODUCT_WEB_SITE "https://github.com/WNU-Project/WNU-OS"
 !define PRODUCT_DIR_REGKEY "Software\Microsoft\Windows\CurrentVersion\App Paths\wnuos.exe"
@@ -55,7 +55,7 @@ Section "WNU OS Core" SEC01
   SectionIn RO
   SetOutPath "$INSTDIR"
   SetOverwrite ifnewer
-  File "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.0\wnuos.exe"
+  File "..\wnuos.exe"
   CreateDirectory "$SMPROGRAMS\WNU OS"
   CreateShortCut "$SMPROGRAMS\WNU OS\WNU OS.lnk" "$INSTDIR\wnuos.exe"
   CreateShortCut "$DESKTOP\WNU OS.lnk" "$INSTDIR\wnuos.exe"
@@ -63,20 +63,34 @@ SectionEnd
 
 Section "Source Code" SEC02
   SetOutPath "$INSTDIR\src"
-  File "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.0\main.c"
-  File "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.0\boot.c"
-  File "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.0\userlogin.c"
-  File "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.0\poweroff.c"
-  File "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.0\reboot.c"
-  File "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.0\halt.c"
-  File "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.0\Makefile"
-  File "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.0\build.bat"
-  File "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.0\boot.h"
-  File "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.0\userlogin.h"
-  File "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.0\poweroff.h"
-  File "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.0\halt.h"
-  File "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.0\reboot.h"
+  File "..\main.c"
+  File "..\boot.c"
+  File "..\userlogin.c"
+  File "..\poweroff.c"
+  File "..\reboot.c"
+  File "..\halt.c"
+  File "..\Makefile"
+  File "..\build.bat"
+  File "..\boot.h"
+  File "..\userlogin.h"
+  File "..\poweroff.h"
+  File "..\halt.h"
+  File "..\reboot.h"
   CreateShortCut "$SMPROGRAMS\WNU OS\Source Code.lnk" "$INSTDIR\src"
+SectionEnd
+
+Section "WSYS2 Stand-alone Package Manager" SEC03
+  SetOutPath "C:\WNU\WSYS2"
+  File "..\wsys2\wsys2.exe"
+SectionEnd
+
+Section "WSYS2 Stand-alone Package Manager (Source Code)" SEC04
+  SetOutPath "C:\WNU\WSYS2\src"
+  File "..\wsys2\main.c"
+  File "..\wsys2\Makefile"
+  File "..\wsys2\package.c"
+  File "..\wsys2\wsys2.c"
+  File "..\wsys2\wsys2.h"
 SectionEnd
 
 Section -AdditionalIcons
@@ -153,6 +167,8 @@ SectionEnd
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC01} "Core WNU OS files (required)"
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC02} "Source code files for developers"
+  !insertmacro MUI_DESCRIPTION_TEXT ${SEC03} "WSYS2 Package Manager executable"
+  !insertmacro MUI_DESCRIPTION_TEXT ${SEC04} "WSYS2 Package Manager source code"
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 # PATH manipulation functions
