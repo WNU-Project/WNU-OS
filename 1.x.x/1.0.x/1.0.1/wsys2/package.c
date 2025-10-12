@@ -146,6 +146,7 @@ int package_install_files(const Package* pkg, const char* source_file, const cha
     
     unsigned char* end_pos = buffer + file_size;
     
+    int file_count = 0;
     while (current_pos < end_pos) {
         // Look for "FILE:" marker using binary search
         unsigned char* file_marker = NULL;
@@ -157,6 +158,8 @@ int package_install_files(const Package* pkg, const char* source_file, const cha
         }
         
         if (!file_marker) break;
+        
+        file_count++;
         
         // Extract filename (skip "FILE:")
         unsigned char* filename_start = file_marker + 5;
@@ -219,20 +222,36 @@ int package_install_files(const Package* pkg, const char* source_file, const cha
         
         // Don't skip any additional whitespace - binary data starts immediately
         
-        // Look for the end of binary data by finding section markers
+        // Look for the end of binary data by finding the NEXT FILE: marker or section markers
         unsigned char* binary_end = end_pos;
         
-        // Search for [INSTALL] section marker which should come after the binary
-        for (unsigned char* p = binary_start; p <= end_pos - 12; p++) {
-            // Look for newline followed by [INSTALL] (more precise matching)
-            if (*p == '\n' && memcmp(p + 1, "[INSTALL]", 9) == 0) {
-                binary_end = p;
+        // Search for next FILE: marker first (indicates another file)
+        for (unsigned char* p = binary_start; p <= end_pos - 5; p++) {
+            if (memcmp(p, "FILE:", 5) == 0) {
+                // Found another file, binary data ends at previous newline
+                unsigned char* newline_before = p - 1;
+                while (newline_before > binary_start && (*newline_before == '\r' || *newline_before == '\n')) {
+                    newline_before--;
+                }
+                binary_end = newline_before + 1;
                 break;
             }
-            // Also look for [UNINSTALL] as alternative end marker  
-            if (*p == '\n' && p <= end_pos - 14 && memcmp(p + 1, "[UNINSTALL]", 11) == 0) {
-                binary_end = p;
-                break;
+        }
+        
+        // If no next FILE: found, look for section markers
+        if (binary_end == end_pos) {
+            for (unsigned char* p = binary_start; p <= end_pos - 9; p++) {
+                // Look for newline followed by section markers
+                if (*p == '\n') {
+                    if (p <= end_pos - 10 && memcmp(p + 1, "[INSTALL]", 9) == 0) {
+                        binary_end = p;
+                        break;
+                    }
+                    if (p <= end_pos - 12 && memcmp(p + 1, "[UNINSTALL]", 11) == 0) {
+                        binary_end = p;
+                        break;
+                    }
+                }
             }
         }
         
@@ -262,15 +281,27 @@ int package_install_files(const Package* pkg, const char* source_file, const cha
             printf("    Error: Could not create %s\n", full_path);
         }
         
-        // Move to next file (if we found a marker, skip past it)
-        if (binary_end < end_pos && memcmp(binary_end, "FILE:", 5) == 0) {
-            current_pos = binary_end;
-        } else if (binary_end < end_pos && *binary_end == '[') {
-            break; // Hit a section marker, we're done with files
-        } else {
-            current_pos = end_pos; // End of file
+        // Move to next file - continue searching from after the current binary data
+        current_pos = binary_end;
+        
+        // Skip any section markers we might encounter (but continue looking for more FILES)
+        while (current_pos < end_pos) {
+            // Skip over section markers like [INSTALL] or [UNINSTALL]
+            if (*current_pos == '[') {
+                // Find end of section line
+                while (current_pos < end_pos && *current_pos != '\n') {
+                    current_pos++;
+                }
+                if (current_pos < end_pos) current_pos++; // Skip the newline
+            } else if (*current_pos == '\r' || *current_pos == '\n') {
+                current_pos++; // Skip whitespace
+            } else {
+                break; // Found content, continue looking for FILE: markers
+            }
         }
     }
+    
+    printf("  Total files processed: %d\n", file_count);
     
     free(buffer);
     return 0;
