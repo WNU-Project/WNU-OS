@@ -469,7 +469,7 @@ int wsys2_online_install(const char* package_name) {
     }
     
     if (!package_url) {
-        printf("\033[31m✗ Package '%s' not found in repository\033[0m\n", package_name);
+        printf("\033[31m✗ Package '%s' not found in repository\033[0m\033[33m Or Not Approved\033[0m\n", package_name);
         return 1;
     }
     
