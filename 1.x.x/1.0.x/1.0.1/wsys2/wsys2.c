@@ -598,10 +598,10 @@ int wsys2_online_list(void) {
 
     /* Second-Party and Third-Party lists: none available at the moment */
     printf("\n\033[34mSecond-Party WNU Packages:\033[0m\n");
-    printf("  None as of now\n");
+    printf("  None as of now, However you can reach out To The WNU Project, To Collab To Make a 2nd party package!\n");
 
     printf("\n\033[34mThird-Party WNU Packages:\033[0m\n");
-    printf("  None as of now\n");
+    printf("  None as of now, However, you can Add them to Repo, but it had to be verifed!\n");
     
     if (available_count == 0) {
         printf("\033[33mNo packages currently available in repository\033[0m\n");
