@@ -562,7 +562,7 @@ int wsys2_online_list(void) {
         const char* category;
     } RepoPackage;
     
-    RepoPackage repo_packages[] = {
+    RepoPackage repo_packages_1st_party[] = {
         {
             "wnu-dev-tools", 
             "1.0.0", 
@@ -578,15 +578,14 @@ int wsys2_online_list(void) {
             "Development"
         }
     };
-    
     int available_count = 0;
-    int total_packages = sizeof(repo_packages) / sizeof(repo_packages[0]);
-    
+    int total_packages = sizeof(repo_packages_1st_party) / sizeof(repo_packages_1st_party[0]);
+
     printf("\033[34mFirst-Party WNU Packages:\033[0m\n");
-    
+
     for (int i = 0; i < total_packages; i++) {
-        RepoPackage* pkg = &repo_packages[i];
-        
+        RepoPackage* pkg = &repo_packages_1st_party[i];
+
         printf("  Checking: %s... ", pkg->name);
         if (check_url_exists(pkg->url)) {
             printf("\033[32m✓\033[0m\n");
@@ -596,6 +595,13 @@ int wsys2_online_list(void) {
             printf("\033[31m✗ Not available\033[0m\n");
         }
     }
+
+    /* Second-Party and Third-Party lists: none available at the moment */
+    printf("\n\033[34mSecond-Party WNU Packages:\033[0m\n");
+    printf("  None as of now\n");
+
+    printf("\n\033[34mThird-Party WNU Packages:\033[0m\n");
+    printf("  None as of now\n");
     
     if (available_count == 0) {
         printf("\033[33mNo packages currently available in repository\033[0m\n");
