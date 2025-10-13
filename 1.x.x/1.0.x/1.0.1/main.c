@@ -652,7 +652,7 @@ int main(void) {
                 FindClose(hFind);
             }
         }
-        else if (strcmp(command, "wsys2") == 0) {
+        else if (strcmp(command, "wsys2") == 0 && isnormaluser == 0) {
             // Initialize WSYS2 system
             if (wsys2_init() != 0) {
                 printf("\033[31mError:\033[0m Failed to initialize WSYS2 system\n");
@@ -804,6 +804,9 @@ int main(void) {
                 }
             }
         }
+        else if (strcmp(command, "wsys2") == 0 && isnormaluser == 1) {
+            printf("Error: WSYS2 can only be run as root user. Use 'su root' to switch to root.\n");
+        } 
         else if (strlen(command) > 0) {
             system(command); // Run external command
         }
