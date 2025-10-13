@@ -133,6 +133,8 @@ void boot_sequence() {
     Sleep(200 + (rand() % 100));
     start_service("wsys2", 150, rand() % 10 != 0);
     Sleep(200 + (rand() % 100));
+    start_service("wsys2 Sub-shell", 150, rand() % 10 != 0 );
+    Sleep(200 + (rand() % 100));
     printf("[\033[2m%.6f\033[0m] Reaching target Multi-User System. [\t\033[33mPENDING\033[0m\t]\n", get_unix_epoch_seconds());
     Sleep(200 + (rand() % 100));
     printf("[\033[2m%.6f\033[0m] Reached target Multi-User System. [\t\033[32mOK\033[0m\t]\n", get_unix_epoch_seconds());

@@ -96,6 +96,8 @@ int poweroff_sequence(void) {
     stop_service("udev", 250, 1);
     Sleep(100 + (rand() % 50));
     stop_service("wsys2", 200, 1);
+    Sleep(100 + (rand() % 50));
+    stop_service("wsys2 Sub-Shell", 200, 1);
 
     printf("[\033[2m%.6f\033[0m] Reached target shutdown. [\t\033[33mPENDING\033[0m\t]\n", get_poweroff_unix_epoch_seconds());
     Sleep(150 + (rand() % 50));
