@@ -23,10 +23,18 @@ $(COMPILER_TARGET): wnupkg-compiler.c
 	$(CC) $(CFLAGS) wnupkg-compiler.c -o $(COMPILER_TARGET)
 	@echo "✓ WNUPKG Compiler built successfully!"
 
-# Build object files
-%.o: %.c $(HEADERS)
-	@echo "Compiling $<..."
-	$(CC) $(CFLAGS) -c $< -o $@
+# Build object files (explicit rules to avoid reusing stale/checked-in objects)
+main.o: main.c $(HEADERS)
+	@echo "Compiling main.c..."
+	$(CC) $(CFLAGS) -c main.c -o main.o
+
+wsys2.o: wsys2.c $(HEADERS)
+	@echo "Compiling wsys2.c..."
+	$(CC) $(CFLAGS) -c wsys2.c -o wsys2.o
+
+package.o: package.c $(HEADERS)
+	@echo "Compiling package.c..."
+	$(CC) $(CFLAGS) -c package.c -o package.o
 
 # Clean build files
 clean:

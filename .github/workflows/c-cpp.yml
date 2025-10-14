@@ -23,7 +23,6 @@ jobs:
         install: >-
           mingw-w64-x86_64-gcc
           mingw-w64-x86_64-make
-          make
         
     - name: Build WNU OS
       shell: msys2 {0}
@@ -35,7 +34,7 @@ jobs:
     - name: Test build artifacts
       shell: msys2 {0}
       run: |
-        cd "1.x.x/1.0.x/1.0.0"
+        cd "1.x.x/1.0.x/1.0.1"
         ls -la *.exe *.o || echo "Build artifacts check completed"
         
     - name: Archive build artifacts
@@ -43,8 +42,8 @@ jobs:
       with:
         name: wnuos-build
         path: |
-          1.x.x/1.0.x/1.0.0/*.exe
-          1.x.x/1.0.x/1.0.0/*.o
+          1.x.x/1.0.x/1.0.1/*.exe
+          1.x.x/1.0.x/1.0.1/*.o
         retention-days: 7
   buildwsys2:
     name: Build WSYS2
