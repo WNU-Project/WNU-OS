@@ -154,6 +154,14 @@ int main(int argc, char *argv[]) {
             return 1;
         }
     }
+    else if (strcmp(command, "upgrade") == 0) {
+        if (argc < 3) {
+            printf("\033[31mError:\033[0m No package specified for upgrade\n");
+            printf("Usage: wsys2 upgrade <package>\n");
+            return 1;
+        }
+        return wsys2_upgrade(argv[2]);
+    }
     else if (strcmp(command, "version") == 0 || strcmp(command, "--version") == 0) {
         printf("WSYS2 Package Manager v1.0.0\n");
         printf("Part of WNU OS 1.0.1\n");
@@ -269,7 +277,15 @@ int main(int argc, char *argv[]) {
                     printf("\033[31mError:\033[0m Unknown online command '%s'\n", args[1]);
                     printf("Available commands: update, search, install, list, info\n");
                 }
-            } else if (strcmp(args[0], "help") == 0 || strcmp(args[0], "--help") == 0) {
+            } else if (strcmp(args[0], "upgrade") == 0) {
+                if (arg_count < 2) {
+                    printf("\033[31mError:\033[0m No package specified for upgrade\n");
+                    printf("Usage: upgrade <package>\n");
+                    continue;
+                }
+                wsys2_upgrade(args[1]);
+            }
+            else if (strcmp(args[0], "help") == 0 || strcmp(args[0], "--help") == 0) {
                 print_help();
             } else {
                 printf("\033[31mError:\033[0m Unknown command '%s'\n", args[0]);

@@ -169,6 +169,42 @@ int wsys2_update(void) {
     return 0;
 }
 
+int wsys2_upgrade(const char* package_name) {
+    if (!package_name || strlen(package_name) == 0) {
+        printf("\033[31mError:\033[0m No package specified for upgrade\n");
+        return 1;
+    }
+
+    printf("Upgrading: %s\n", package_name);
+    printf("Continue? [y/n] ");
+
+    // Read a single non-whitespace character from stdin safely
+    int c = getchar();
+    while (c != EOF && (c == ' ' || c == '\t' || c == '\n' || c == '\r')) c = getchar();
+
+    if (c == 'y' || c == 'Y') {
+        printf("Proceeding with upgrade of %s\n", package_name);
+
+        // Remove current package first (best-effort)
+        if (wsys2_remove(package_name) != 0) {
+            printf("\033[33mWarning:\033[0m Failed to remove existing package; continuing to attempt install\n");
+        }
+
+        // Install package from online repository
+        int res = wsys2_online_install(package_name);
+        if (res == 0) {
+            printf("\033[32m✓ Upgrade of %s completed successfully\033[0m\n", package_name);
+            return 0;
+        } else {
+            printf("\033[31m✗ Upgrade of %s failed\033[0m\n", package_name);
+            return 1;
+        }
+    } else {
+        printf("Upgrade cancelled\n");
+        return 0;
+    }
+}
+
 // Search for packages
 int wsys2_search(const char* search_term) {
     if (search_term) {

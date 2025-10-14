@@ -771,6 +771,9 @@ int main(void) {
                         continue;
                     }
                     wsys2_info(args[1]);
+                
+                } else if (strcmp(args[0], "upgrade") == 0) {
+                    wsys2_upgrade(args[1]);
                 } else if (strcmp(args[0], "version") == 0 || strcmp(args[0], "--version") == 0) {
                     printf("WSYS2 Package Manager v1.0.0\n");
                     printf("Integrated into WNU OS 1.0.1\n");

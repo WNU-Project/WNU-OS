@@ -37,6 +37,7 @@ int wsys2_search(const char* search_term);
 int wsys2_list(void);
 int wsys2_info(const char* package_name);
 int wsys2_run(const char* package_spec, const char* program_name, char** args, int arg_count);
+int wsys2_upgrade(const char* package_name);
 
 // Online package functions
 int wsys2_online_update(void);
@@ -62,10 +63,11 @@ void wsys2_print_package(const Package* pkg);
 
 // Compare two semantic version strings (declared here to avoid implicit
 // declaration warnings when used across compilation units)
-int version_compare(const char* a, const char* b);
 // Version compare helper: -1 if a<b, 0 if equal, 1 if a>b
 int version_compare(const char* a, const char* b);
-int wsys2_find_executable_recursive(const char* base_path, char* exe_name, char* exe_dir, char* exe_path);
+
+// Find an executable recursively inside a package directory. Returns 1 on
+// success and fills exe_name/exe_dir/exe_path, 0 if none found.
 int wsys2_find_executable_recursive(const char* base_path, char* exe_name, char* exe_dir, char* exe_path);
 
 #endif // WSYS2_H
