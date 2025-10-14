@@ -106,14 +106,14 @@ jobs:
     - name: Build WNUPKG-COMPILER
       shell: msys2 {0}
       run: |
-        cd "tools/wnupkg-compiler"
+        cd "1.x.x/1.0.x/1.0.1/wnupkg-compiler"
         make clean || true
         make
         
     - name: Test build artifacts
       shell: msys2 {0}
       run: |
-        cd "tools/wnupkg-compiler"
+        cd "1.x.x/1.0.x/1.0.1/wnupkg-compiler"
         ls -la *.exe *.o || echo "Build artifacts check completed"
         
     - name: Archive build artifacts
