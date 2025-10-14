@@ -46,6 +46,10 @@ int wsys2_online_install(const char* package_name);
 int wsys2_online_list(void);
 int wsys2_online_info(const char* package_name);
 
+// Online helpers
+int check_url_exists(const char* url);
+int download_file(const char* url, const char* local_path);
+
 // Package management functions
 int package_parse_wnupkg(const char* wnupkg_file, Package* pkg);
 int package_install_files(const Package* pkg, const char* source_file, const char* dest_dir);

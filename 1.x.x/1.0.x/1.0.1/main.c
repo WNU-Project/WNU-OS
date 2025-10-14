@@ -787,6 +787,8 @@ int main(void) {
                     printf("  \033[34msearch\033[0m  [term]      Search for available packages\n");
                     printf("  \033[35mlist\033[0m                List all installed packages\n");
                     printf("  \033[36minfo\033[0m    <package>    Show package information\n");
+                    printf("  \033[37mrun\033[0m     <pkg> [prog] [args...]  Run a program from a package\n");
+                    printf("  \033[37mupgrade\033[0m [package] Upgrade an installed package to latest version\n");
                     printf("\nOnline Package Management:\n");
                     printf("  \033[32monline install\033[0m <pkg> Install package from online repository\n");
                     printf("  \033[34monline search\033[0m [term] Search online repository\n");

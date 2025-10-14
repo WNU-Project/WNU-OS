@@ -26,6 +26,8 @@ void print_help() {
     printf("  \033[95monline\033[0m  <command>    Online package operations\n");
     printf("  \033[37mversion\033[0m             Show WSYS2 version\n");
     printf("  \033[37mhelp\033[0m                Show this help message\n");
+    printf("  \033[37mrun\033[0m     <pkg> [prog] [args...]  Run a program from a package\n");
+    printf("  \033[37mupgrade\033[0m [package] Upgrade an installed package to latest version\n");
     printf("\nOnline Commands:\n");
     printf("  \033[95monline update\033[0m       Refresh online package database\n");
     printf("  \033[95monline search\033[0m <term> Search online packages\n");

@@ -131,8 +131,10 @@ int wsys2_update(void) {
     
     printf("Found %d installed packages\n", count);
     
-    // Conservative update check: compare installed versions with online index
-    // Known online package metadata (name -> url and version)
+    // Conservative update check: first prefer any already-downloaded package
+    // in C:\WNU\packages\online, compare its manifest against the
+    // installed package. If a repository URL is known and reachable, also
+    // download the repository copy to temp and compare that too.
     typedef struct { const char* name; const char* version; const char* url; } KnownPkg;
     KnownPkg known[] = {
         {"wnu-dev-tools", "1.0.0", "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-dev-tools/wnu-dev-tools.wnupkg"},
@@ -143,27 +145,103 @@ int wsys2_update(void) {
 
     int updates_found = 0;
 
+    // Ensure temp dir exists for remote download comparisons
+    char temp_dir[512];
+    ExpandEnvironmentStringsA(WSYS2_TEMP_DIR, temp_dir, sizeof(temp_dir));
+    _mkdir(temp_dir);
+
     for (int i = 0; i < count; i++) {
         Package* p = &packages[i];
-        // Find in known list
-        for (int k = 0; known[k].name != NULL; k++) {
-            if (strcmp(p->name, known[k].name) == 0) {
-                int cmp = version_compare(p->version, known[k].version);
-                if (cmp < 0) {
-                    printf("Update available: %s v%s -> v%s\n", p->name, p->version, known[k].version);
-                    printf("  URL: %s\n", known[k].url);
-                    printf("  To upgrade: wsys2 online install %s\n", known[k].name);
+
+        // Look for a locally downloaded package first
+        char local_online_path[512];
+        snprintf(local_online_path, sizeof(local_online_path), "C:\\WNU\\packages\\online\\%s.wnupkg", p->name);
+
+        int considered_remote = 0;
+        Package local_pkg = {0};
+        Package remote_pkg = {0};
+
+        if (GetFileAttributesA(local_online_path) != INVALID_FILE_ATTRIBUTES) {
+            // Parse local downloaded package
+            if (package_parse_wnupkg(local_online_path, &local_pkg) == 0) {
+                // Compare installed -> local downloaded
+                int cmp_local = version_compare(p->version, local_pkg.version);
+                if (cmp_local < 0) {
+                    printf("Update available (downloaded): %s v%s -> v%s\n", p->name, p->version, local_pkg.version);
+                    printf("  Local file: %s\n", local_online_path);
+                    printf("  To upgrade: wsys2 install %s\n", local_online_path);
                     updates_found++;
+                    // Even if local is newer than installed, we still try to check remote repo
+                } else if (cmp_local == 0) {
+                    printf("Local downloaded package for %s matches installed version (v%s)\n", p->name, p->version);
+                } else {
+                    printf("Local downloaded package for %s is older than installed (local v%s, installed v%s)\n", p->name, local_pkg.version, p->version);
                 }
-                break;
+            } else {
+                printf("Warning: could not parse local downloaded package: %s\n", local_online_path);
             }
+        }
+
+        // If we have a known repo URL for this package, compare against repo
+        const char* repo_url = NULL;
+        for (int k = 0; known[k].name != NULL; k++) {
+            if (strcmp(p->name, known[k].name) == 0) { repo_url = known[k].url; break; }
+        }
+
+        if (repo_url) {
+            considered_remote = 1;
+            // Check repo availability
+            if (check_url_exists(repo_url)) {
+                // Download remote package to temp and parse
+                char remote_tmp[1024];
+                snprintf(remote_tmp, sizeof(remote_tmp), "%s\\repo_%s.wnupkg", temp_dir, p->name);
+                if (download_file(repo_url, remote_tmp)) {
+                    if (package_parse_wnupkg(remote_tmp, &remote_pkg) == 0) {
+                        // Compare installed -> remote
+                        int cmp_remote = version_compare(p->version, remote_pkg.version);
+                        if (cmp_remote < 0) {
+                            printf("Update available (repo): %s v%s -> v%s\n", p->name, p->version, remote_pkg.version);
+                            printf("  URL: %s\n", repo_url);
+                            printf("  To upgrade: wsys2 online install %s\n", p->name);
+                            updates_found++;
+                        } else if (cmp_remote == 0) {
+                            // If local downloaded exists, compare local vs remote
+                            if (GetFileAttributesA(local_online_path) != INVALID_FILE_ATTRIBUTES && strlen(local_pkg.version) > 0) {
+                                int cmp_local_remote = version_compare(local_pkg.version, remote_pkg.version);
+                                if (cmp_local_remote < 0) {
+                                    printf("Repository has newer package for %s (local v%s -> repo v%s). Consider re-downloading.\n", p->name, local_pkg.version, remote_pkg.version);
+                                } else if (cmp_local_remote == 0) {
+                                    // equal
+                                } else {
+                                    printf("Local downloaded package for %s is newer than repo (local v%s -> repo v%s).\n", p->name, local_pkg.version, remote_pkg.version);
+                                }
+                            }
+                        }
+                    } else {
+                        printf("Warning: failed to parse remote package for %s\n", p->name);
+                    }
+                    // remove temp file
+                    DeleteFileA(remote_tmp);
+                } else {
+                    printf("Warning: failed to download remote package for %s\n", p->name);
+                }
+            } else {
+                // repo not accessible
+                // nothing to do here; local comparisons already done above
+            }
+        }
+
+        // If no local download and no known repo, fall back to message
+        if (!considered_remote && GetFileAttributesA(local_online_path) == INVALID_FILE_ATTRIBUTES) {
+            // no local or remote info available for this package
+            // nothing to report for this package
         }
     }
 
     if (updates_found == 0) {
         printf("\033[32m✓ All packages are up to date!\033[0m\n");
     } else {
-        printf("\033[33m%d updates available. Run wsys2 online install <pkg> to upgrade.\033[0m\n", updates_found);
+        printf("\033[33m%d updates available. Use the suggested install commands to upgrade.\033[0m\n", updates_found);
     }
     free(packages);
     return 0;

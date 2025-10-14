@@ -7,7 +7,7 @@
 !define DESCRIPTION "Package Manager for WNU OS"
 !define VERSIONMAJOR 1
 !define VERSIONMINOR 0
-!define VERSIONBUILD 0
+!define VERSIONBUILD 1
 !define HELPURL "https://github.com/WNU-Project/WNU-OS"
 !define UPDATEURL "https://github.com/WNU-Project/WNU-OS/releases"
 !define ABOUTURL "https://github.com/WNU-Project/WNU-OS"
