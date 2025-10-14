@@ -6,6 +6,7 @@
 #include <string.h>   // for strlen
 #include <conio.h>    // for _kbhit and _getch
 #include "reboot.h"
+#include "boot.h"
 
 // ANSI color codes
 #define RESET   "\033[0m"
@@ -161,7 +162,8 @@ int reboot_sequence() {
         "D-Bus system message bus",
         "User sessions",
         "Network interfaces"
-        "Package manager (wsys2)"
+        "Package manager (wsys2)",
+        "Package manager's Sub-shell (wsys2 Sub-Shell)"
     };
     
     // Services to start (startup phase)
@@ -175,8 +177,9 @@ int reboot_sequence() {
         "Cron daemon (crond)",
         "SSH daemon (sshd)",
         "NetworkManager",
-        "User session manager"
-        "Package manager (wsys2)"
+        "User session manager",
+        "Package manager (wsys2)",
+        "Package manager's Sub-shell (wsys2 Sub-Shell)"
     };
     
     int stop_count = sizeof(stop_services) / sizeof(stop_services[0]);
@@ -224,23 +227,7 @@ int reboot_sequence() {
     printf(GREEN "\nPhase 2: Starting Services\n" RESET);
     printf(GREEN "==========================\n" RESET);
     
-    for (int i = 0; i < start_count; i++) {
-        // Check for interrupt before each service
-        if (check_reboot_interrupt()) {
-            printf(RED "\n[REBOOT INTERRUPTED DURING STARTUP]\n" RESET);
-            printf(YELLOW "Reboot sequence cancelled by user!\n" RESET);
-            return -1;
-        }
-        
-        reboot_start_service(start_services[i]);
-        
-        // Additional interrupt check after each service
-        if (check_reboot_interrupt()) {
-            printf(RED "\n[REBOOT INTERRUPTED DURING STARTUP]\n" RESET);
-            printf(YELLOW "Reboot sequence cancelled by user!\n" RESET);
-            return -1;
-        }
-    }
+    boot_sequence(); // Call boot sequence to simulate boot process
     
     printf(GREEN "\n[ " CYAN "%llu" GREEN " ] " RESET "All services started successfully\n", 
            get_unix_epoch_seconds_reboot());

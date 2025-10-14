@@ -164,7 +164,8 @@ int halt_sequence() {
         "Network interfaces",
         "Hardware abstraction layer",
         "Kernel modules",
-        "Package manager (wsys2)"
+        "Package manager (wsys2)",
+        "Package manager's Sub-shell (wsys2 Sub-Shell)"
     };
     
     int num_services = sizeof(services) / sizeof(services[0]);

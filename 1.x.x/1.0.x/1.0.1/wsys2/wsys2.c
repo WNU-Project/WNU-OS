@@ -467,6 +467,9 @@ int wsys2_online_install(const char* package_name) {
     if (strcmp(package_name, "wnu-nano") == 0) {
         package_url = "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-nano/wnu-nano.wnupkg";
     }
+    if (strcmp(package_name, "wnu-calculator") == 0) {
+        package_url = "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-calculator/wnu-calculator.wnupkg";
+    }
     
     if (!package_url) {
         printf("\033[31m✗ Package '%s' not found in repository\033[0m\033[33m Or Not Approved\033[0m\n", package_name);
@@ -576,6 +579,13 @@ int wsys2_online_list(void) {
             "Lightweight text editor for WNU OS",
             "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-nano/wnu-nano.wnupkg",
             "Development"
+        },
+        {
+            "wnu-calculator",
+            "1.0.0",
+            "Simple calculator application for WNU OS",
+            "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-calculator/wnu-calculator.wnupkg",
+            "Math"
         }
     };
     int available_count = 0;
