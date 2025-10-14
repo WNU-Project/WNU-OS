@@ -131,9 +131,40 @@ int wsys2_update(void) {
     
     printf("Found %d installed packages\n", count);
     
-    // TODO: Check for updates and install newer versions
-    
-    printf("\033[32m✓ All packages are up to date!\033[0m\n");
+    // Conservative update check: compare installed versions with online index
+    // Known online package metadata (name -> url and version)
+    typedef struct { const char* name; const char* version; const char* url; } KnownPkg;
+    KnownPkg known[] = {
+        {"wnu-dev-tools", "1.0.0", "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-dev-tools/wnu-dev-tools.wnupkg"},
+        {"wnu-nano", "1.0.0", "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-nano/wnu-nano.wnupkg"},
+        {"wnu-calculator", "1.0.0", "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-calculator/wnu-calculator.wnupkg"},
+        {NULL, NULL, NULL}
+    };
+
+    int updates_found = 0;
+
+    for (int i = 0; i < count; i++) {
+        Package* p = &packages[i];
+        // Find in known list
+        for (int k = 0; known[k].name != NULL; k++) {
+            if (strcmp(p->name, known[k].name) == 0) {
+                int cmp = version_compare(p->version, known[k].version);
+                if (cmp < 0) {
+                    printf("Update available: %s v%s -> v%s\n", p->name, p->version, known[k].version);
+                    printf("  URL: %s\n", known[k].url);
+                    printf("  To upgrade: wsys2 online install %s\n", known[k].name);
+                    updates_found++;
+                }
+                break;
+            }
+        }
+    }
+
+    if (updates_found == 0) {
+        printf("\033[32m✓ All packages are up to date!\033[0m\n");
+    } else {
+        printf("\033[33m%d updates available. Run wsys2 online install <pkg> to upgrade.\033[0m\n", updates_found);
+    }
     free(packages);
     return 0;
 }
@@ -265,6 +296,29 @@ int wsys2_is_admin(void) {
         fclose(test);
         DeleteFileA("C:\\WNU\\test_admin.tmp");
         return 1;
+    }
+    return 0;
+}
+
+// Compare two semantic version strings ("1.2.3").
+// Returns -1 if a < b, 0 if equal, 1 if a > b
+int version_compare(const char* a, const char* b) {
+    if (!a || !b) return 0;
+    int ai = 0, bi = 0;
+    char a_copy[128];
+    char b_copy[128];
+    strncpy(a_copy, a, sizeof(a_copy)-1); a_copy[sizeof(a_copy)-1] = '\0';
+    strncpy(b_copy, b, sizeof(b_copy)-1); b_copy[sizeof(b_copy)-1] = '\0';
+
+    char* atok = strtok(a_copy, ".");
+    char* btok = strtok(b_copy, ".");
+    while (atok || btok) {
+        ai = atok ? atoi(atok) : 0;
+        bi = btok ? atoi(btok) : 0;
+        if (ai < bi) return -1;
+        if (ai > bi) return 1;
+        atok = atok ? strtok(NULL, ".") : NULL;
+        btok = btok ? strtok(NULL, ".") : NULL;
     }
     return 0;
 }

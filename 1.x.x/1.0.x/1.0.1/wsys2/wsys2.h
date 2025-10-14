@@ -59,6 +59,13 @@ int wsys2_create_directories(void);
 char* wsys2_get_package_dir(int user_install);
 int wsys2_is_admin(void);
 void wsys2_print_package(const Package* pkg);
+
+// Compare two semantic version strings (declared here to avoid implicit
+// declaration warnings when used across compilation units)
+int version_compare(const char* a, const char* b);
+// Version compare helper: -1 if a<b, 0 if equal, 1 if a>b
+int version_compare(const char* a, const char* b);
+int wsys2_find_executable_recursive(const char* base_path, char* exe_name, char* exe_dir, char* exe_path);
 int wsys2_find_executable_recursive(const char* base_path, char* exe_name, char* exe_dir, char* exe_path);
 
 #endif // WSYS2_H
