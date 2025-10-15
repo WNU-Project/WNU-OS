@@ -1,6 +1,7 @@
 #include "wsys2.h"
 #include <direct.h>
 #include <sys/stat.h>
+#include <ctype.h>
 
 // Initialize WSYS2 system
 int wsys2_init(void) {
@@ -140,7 +141,7 @@ int wsys2_update(void) {
         {"wnu-dev-tools", "1.0.0", "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-dev-tools/wnu-dev-tools.wnupkg"},
         {"wnu-nano", "1.0.0", "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-nano/wnu-nano.wnupkg"},
         {"wnu-calculator", "1.0.0", "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-calculator/wnu-calculator.wnupkg"},
-        {NULL, NULL, NULL}
+        {"wnu-sh", "1.0.0", "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-sh/wnu-sh.wnupkg"}
     };
 
     int updates_found = 0;
@@ -252,7 +253,70 @@ int wsys2_upgrade(const char* package_name) {
         printf("\033[31mError:\033[0m No package specified for upgrade\n");
         return 1;
     }
+    if (strcmp(package_name, "all") == 0) {
+        // Upgrade all installed packages (interactive confirmation)
+        printf("Upgrading all installed packages. Continue? [y/n] ");
+        int c = getchar();
+        // Skip leading whitespace
+        while (c != EOF && isspace((unsigned char)c)) c = getchar();
+        if (c == EOF) {
+            printf("\nUpgrade cancelled\n");
+            return 0;
+        }
+        if (c != 'y' && c != 'Y') {
+            printf("\nUpgrade cancelled\n");
+            // consume rest of line
+            while (c != EOF && c != '\n') c = getchar();
+            return 0;
+        }
+        printf("Proceeding with upgrade of all packages\n");
+        Package* installed = NULL;
+        int cnt = 0;
+        if (package_list_installed(&installed, &cnt) != 0) {
+            printf("\033[31mError:\033[0m Failed to list installed packages\n");
+            return 1;
+        }
 
+        if (cnt == 0) {
+            printf("No packages installed to upgrade\n");
+            free(installed);
+            return 0;
+        }
+
+        printf("Upgrading all %d installed package(s)...\n", cnt);
+        int failures = 0;
+        for (int i = 0; i < cnt; i++) {
+            char namebuf[256] = {0};
+            strncpy(namebuf, installed[i].name, sizeof(namebuf)-1);
+            printf("\n--- Upgrading %s ---\n", namebuf);
+
+            // Remove current package first (best-effort) to mirror single-package upgrade flow
+            if (wsys2_remove(namebuf) != 0) {
+                printf("\033[33mWarning:\033[0m Failed to remove existing package %s; will still attempt install\n", namebuf);
+            }
+
+            // Try online install which downloads and installs the latest package
+            int r = wsys2_online_install(namebuf);
+            if (r != 0) {
+                printf("\033[31m✗ Failed to upgrade %s\033[0m\n", namebuf);
+                failures++;
+            } else {
+                printf("\033[32m✓ Upgraded %s\033[0m\n", namebuf);
+            }
+
+            // small delay to avoid hammering repository
+            Sleep(150);
+        }
+
+        free(installed);
+        if (failures == 0) {
+            printf("\nAll packages upgraded successfully\n");
+            return 0;
+        } else {
+            printf("\n%d package(s) failed to upgrade\n", failures);
+            return 1;
+        }
+    }
     printf("Upgrading: %s\n", package_name);
     printf("Continue? [y/n] ");
 
@@ -638,7 +702,9 @@ int wsys2_online_install(const char* package_name) {
     if (strcmp(package_name, "wnu-calculator") == 0) {
         package_url = "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-calculator/wnu-calculator.wnupkg";
     }
-    
+    if (strcmp(package_name, "wnu-sh") == 0) {
+        package_url = "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-sh/wnu-sh.wnupkg";
+    }
     if (!package_url) {
         printf("\033[31m✗ Package '%s' not found in repository\033[0m\033[33m Or Not Approved\033[0m\n", package_name);
         return 1;
@@ -754,6 +820,13 @@ int wsys2_online_list(void) {
             "Simple calculator application for WNU OS",
             "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-calculator/wnu-calculator.wnupkg",
             "Math"
+        },
+        {
+            "wnu-sh",
+            "1.0.0",
+            "A .sh File Interpiler",
+            "https://wnu-project.github.io/wnuos.packages.com/WNU-Project@wnu-sh/wnu-sh.wnupkg",
+            "Utilities"
         }
     };
     int available_count = 0;

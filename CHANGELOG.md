@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1.update.1] - 2025-10-15
+
+### Added
+
+- WSYS2: `wsys2 upgrade all` — interactive command to upgrade all installed packages (iterates installed packages and attempts online install for each).
+
+### Improved
+
+- Hardened upgrade confirmation input parsing (skips whitespace and requires explicit `y`/`Y` to continue).
+- Upgrade flow now attempts a best-effort `wsys2 remove` before installing the new package to mirror single-package behavior.
+- Minor robustness fixes: safe package-name handling, small delay between package installs to avoid repository hammering, and added required includes.
+
+### Fixed
+
+- Resolved implicit-declaration warnings by adding missing prototypes and headers.
+- Makefile adjustments to avoid stale object reuse that caused cross-architecture link failures in CI.
+
+### Notes
+
+- This update improves UX and robustness but the upgrade flow is not yet atomic — a failed install after removal may leave a package uninstalled. Implementing atomic upgrade (download → verify → install-to-temp → atomic swap with backup + rollback) is recommended for the next patch.
+
 ## [1.0.1] - 2025-10-11
 
 ### Added
