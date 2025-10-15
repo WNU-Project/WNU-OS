@@ -378,6 +378,6 @@ USERNAME: tadeo
 
 **Download WNU OS** and experience Unix on Windows with complete package management! 🐧🪟📦
 
-[Unreleased]: https://github.com/WNU-Project/WNU-OS/compare/v1.0.1...HEAD
+[1.0.1.update.1]: https://github.com/WNU-Project/WNU-OS/releases/tag/v1.0.1.update.1
 [1.0.1]: https://github.com/WNU-Project/WNU-OS/releases/tag/v1.0.1
 [1.0.0]: https://github.com/WNU-Project/WNU-OS/releases/tag/v1.0.0
