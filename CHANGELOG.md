@@ -11,7 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- WSYS2: `wsys2 upgrade all` — interactive command to upgrade all installed packages (iterates installed packages and attempts online install for each).
+#### WSYS2
+
+- `wsys2 upgrade all` — interactive command to upgrade all installed packages (iterates installed packages and attempts online install for each).
+- `wsys2 upgrade <package>` — interactive command to upgrade a specific installed package (checks if installed, then attempts online install).
+- Updated WSYS2 from 1.0.0 to 1.0.1.
 
 ### Improved
 
