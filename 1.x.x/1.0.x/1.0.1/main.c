@@ -263,7 +263,7 @@ int main(void) {
 
     // --- Getty target login screen ---
     printf("\n");
-    printf("WNU OS 1.0.1 %s tty1 %s %s \n", computername, __DATE__, __TIME__);
+    printf("WNU OS 1.0.1 Update 2 %s tty1 %s %s US EDT UTC -4:00\n", computername, __DATE__, __TIME__);
     printf("\n");
     printf("%s login: ", computername);
     fflush(stdout);
