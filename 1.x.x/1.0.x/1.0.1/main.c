@@ -242,6 +242,8 @@ int authenticate_user(const char* username, const char* credential) {
 }
 
 int main(void) {
+    SetConsoleOutputCP(CP_UTF8);
+    SetConsoleCP(CP_UTF8);
     char username[100];
     char computername[MAX_COMPUTERNAME_LENGTH + 1];
     DWORD size = sizeof(computername);
