@@ -6,7 +6,7 @@ CFLAGS = -Wall -Wextra -std=c11 -Iwsys2
 TARGET = wnuos.exe
 
 # Source files
-SRCS = main.c boot.c userlogin.c poweroff.c halt.c reboot.c wsys2/wsys2.c wsys2/package.c
+SRCS = main.c boot.c userlogin.c poweroff.c halt.c reboot.c wsys2/wsys2.c wsys2/package.c tty_session.c
 OBJS = $(SRCS:.c=.o)
 
 # Default build

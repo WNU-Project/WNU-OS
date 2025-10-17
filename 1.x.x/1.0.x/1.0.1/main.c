@@ -10,6 +10,7 @@
 #include "halt.h"
 #include "reboot.h"
 #include "wsys2/wsys2.h"  // Include WSYS2 package manager
+#include "tty_session.h" // Include TTY session management
 
 #ifndef PROCESSOR_ARCHITECTURE_ARM64
 #define PROCESSOR_ARCHITECTURE_ARM64 12
@@ -263,9 +264,12 @@ int main(void) {
         strcpy(current_user, "unknown");
     }
 
+    /* Current tty name (default tty1). This will be saved/loaded via tty_session. */
+    char current_tty[16] = "tty1";
+
     // --- Getty target login screen ---
     printf("\n");
-    printf("WNU OS 1.0.1 Update 2 %s tty1 %s %s US EDT UTC -4:00\n", computername, __DATE__, __TIME__);
+    printf("WNU OS 1.0.1 Update 2 %s %s %s %s US EDT UTC -4:00\n", computername, current_tty, __DATE__, __TIME__);
     printf("\n");
     printf("%s login: ", computername);
     fflush(stdout);
@@ -813,7 +817,80 @@ int main(void) {
         }
         else if (strcmp(command, "wsys2") == 0 && isnormaluser == 1) {
             printf("Error: WSYS2 can only be run as root user. Use 'su root' to switch to root.\n");
-        } 
+        }
+        else if (strncmp(command, "switch tty", 10) == 0) {
+            // Command: switch tty <number>
+            // Parse the tty number after the command
+            const char* p = command + 10;
+            while (*p == ' ') p++;
+            if (*p == '\0') {
+                printf("Usage: switch tty <NUMBER>\n");
+            } else {
+                // Only accept numeric tty numbers
+                char tty_num[16];
+                int i = 0;
+                while (*p && *p != ' ' && i < (int)sizeof(tty_num)-1) {
+                    if (*p < '0' || *p > '9') {
+                        printf("Error: tty must be a number!\n");
+                        tty_num[0] = '\0';
+                        break;
+                    }
+                    tty_num[i++] = *p++;
+                }
+                tty_num[i] = '\0';
+                if (tty_num[0] == '\0') {
+                    // Invalid tty number
+                    return 0;
+                }
+
+                // Save current session
+                char save_cwd[1024];
+                if (!_getcwd(save_cwd, sizeof(save_cwd))) save_cwd[0] = '\0';
+                if (tty_session_save(current_tty, username, save_cwd) == 0) {
+                    printf("Saved session for %s\n", current_tty);
+                } else {
+                    printf("Warning: failed to save session for %s\n", current_tty);
+                }
+
+                // Always use 'tty' prefix
+                snprintf(current_tty, sizeof(current_tty), "tty%s", tty_num);
+
+                // Load target session if present
+                char loaded_user[256];
+                char loaded_cwd[1024];
+                int r = tty_session_load(current_tty, loaded_user, sizeof(loaded_user), loaded_cwd, sizeof(loaded_cwd));
+                if (r == 0) {
+                    // Restore user and cwd
+                    printf("Switched to %s (restored user=%s cwd=%s)\n", current_tty, loaded_user, loaded_cwd);
+                    // Copy username
+                    strncpy(username, loaded_user, sizeof(username)-1);
+                    username[sizeof(username)-1] = '\0';
+
+                    // Try to change to saved directory
+                    if (strlen(loaded_cwd) > 0) {
+                        if (_chdir(loaded_cwd) != 0) {
+                            perror("Failed to change to saved cwd");
+                        }
+                    }
+
+                    // Adjust user mode: if username == root -> root mode, else normal user
+                    if (strcmp(username, "root") == 0) {
+                        isnormaluser = 0;
+                    } else {
+                        isnormaluser = 1;
+                    }
+                } else {
+                    printf("Switched to %s (no saved session)\n", current_tty);
+                    // Set username to default (root)
+                    strncpy(username, "root", sizeof(username)-1);
+                    username[sizeof(username)-1] = '\0';
+                    isnormaluser = 0;
+                }
+            }
+        }
+        else if (strcmp(command, "tty") == 0) {
+            printf("%s\n", current_tty);
+        }
         else if (strlen(command) > 0) {
             system(command); // Run external command
         }
