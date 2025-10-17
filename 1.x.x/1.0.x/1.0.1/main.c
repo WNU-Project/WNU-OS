@@ -4,6 +4,7 @@
 #include <direct.h>  // for _getcwd and _chdir
 #include <lmcons.h>  // for UNLEN
 #include <conio.h>   // for _getch function
+#include <time.h>
 #include "boot.h"
 #include "userlogin.h"
 #include "poweroff.h"
@@ -11,6 +12,7 @@
 #include "reboot.h"
 #include "wsys2/wsys2.h"  // Include WSYS2 package manager
 #include "tty_session.h" // Include TTY session management
+#include "motd.h"      // Include motd function
 
 #ifndef PROCESSOR_ARCHITECTURE_ARM64
 #define PROCESSOR_ARCHITECTURE_ARM64 12
@@ -241,7 +243,6 @@ int authenticate_user(const char* username, const char* credential) {
     printf("× All authentication methods failed\n");
     return 0; // Authentication failed
 }
-
 int main(void) {
     SetConsoleOutputCP(CP_UTF8);
     SetConsoleCP(CP_UTF8);
@@ -352,6 +353,8 @@ int main(void) {
         printf("Access denied for user: %s\n", username);
         return 1;
     }
+
+    motd(); // Display message of the day
 
     // --- Shell loop ---
     while (1) {
