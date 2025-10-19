@@ -371,7 +371,7 @@ int x11(void) {
 
         // Terminal icon
         DrawTextureEx(logo, (Vector2){(float)icon_x, (float)icon_y}, 0.0f, iconScale, x11_white);
-        DrawText("Terminal", icon_x, icon_y + icon_h + 8, 18, x11_title);
+        DrawText("xterm", icon_x, icon_y + icon_h + 8, 18, x11_title);
 
         // Draw context menu if active
         if (showContextMenu) {
