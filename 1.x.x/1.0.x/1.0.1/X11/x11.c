@@ -1,158 +1,181 @@
-/*
- * Integrated GUI terminal:
- * - Raylib desktop with a Terminal icon.
- * - Clicking the icon opens a draggable terminal window.
- * - The window runs C:\WNU\WNU OS\wnuos.exe "inside" the GUI via pipes
- *   (no external console window is created).
- */
-
+#ifndef NO_RAYLIB
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
+#include "raylib.h"
+#include "x11.h"
+#include "x11_logo.h"
+#include <string.h>
+#include "raylib.h"
+#include "x11_logo.h"
+    // ...existing code...
+
+// --- Terminal buffer and shell process definitions ---
+#define TERM_MAX_LINES    512
+#define TERM_MAX_COLUMNS  256
+#define READ_CHUNK_SIZE   512
+
+
+
+// Forward declaration for GUI build (real implementation elsewhere)
+typedef struct {
+    void* hProcess;
+    void* hInput;
+    void* hOutput;
+    int running;
+} ChildProc;
 
 #ifndef NO_RAYLIB  /* GUI build only */
 
-#include "raylib.h"
-#include "x11_logo.h"   /* generated from X11.png via xxd -i or Python */
+// Minimal Windows type shims for process status
+typedef unsigned long DWORD;
+#ifndef WAIT_OBJECT_0
+#define WAIT_OBJECT_0 0
+#endif
+
+
+
+
+// --- Windows process code for GUI build ---
+#if defined(_WIN32) && !defined(NO_RAYLIB)
+
+#define WIN32_LEAN_AND_MEAN
+#define NOGDI
+#define NOUSER
+#define NOMINMAX
+#include <windows.h>
+#undef DrawText
+#undef DrawTextEx
+#undef CloseWindow
+#undef Color
+#undef Vector2
+
+int LaunchShell(ChildProc* proc, const char* cmd) {
+    HANDLE hChildStdinRd = NULL, hChildStdinWr = NULL;
+    HANDLE hChildStdoutRd = NULL, hChildStdoutWr = NULL;
+    SECURITY_ATTRIBUTES saAttr = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
+
+    if (!CreatePipe(&hChildStdoutRd, &hChildStdoutWr, &saAttr, 0)) return 0;
+    if (!SetHandleInformation(hChildStdoutRd, HANDLE_FLAG_INHERIT, 0)) return 0;
+    if (!CreatePipe(&hChildStdinRd, &hChildStdinWr, &saAttr, 0)) return 0;
+    if (!SetHandleInformation(hChildStdinWr, HANDLE_FLAG_INHERIT, 0)) return 0;
+
+    STARTUPINFOA si = {0};
+    PROCESS_INFORMATION pi = {0};
+    si.cb = sizeof(si);
+    si.dwFlags = STARTF_USESTDHANDLES;
+    si.hStdInput  = hChildStdinRd;
+    si.hStdOutput = hChildStdoutWr;
+    si.hStdError  = hChildStdoutWr;
+
+    char cmdline[512];
+    snprintf(cmdline, sizeof(cmdline), "%s", cmd);
+
+    BOOL ok = CreateProcessA(
+        NULL, cmdline, NULL, NULL, TRUE,
+        CREATE_NO_WINDOW, NULL, NULL, &si, &pi
+    );
+    CloseHandle(hChildStdinRd);
+    CloseHandle(hChildStdoutWr);
+    if (!ok) {
+        CloseHandle(hChildStdinWr);
+        CloseHandle(hChildStdoutRd);
+        return 0;
+    }
+    proc->hProcess = pi.hProcess;
+    proc->hInput   = hChildStdinWr;
+    proc->hOutput  = hChildStdoutRd;
+    proc->running  = 1;
+    CloseHandle(pi.hThread);
+    return 1;
+}
+
+int ReadShellOutput(ChildProc* proc, char* buf, int buflen) {
+    if (!proc || !proc->hOutput) return 0;
+    DWORD bytesRead = 0;
+    if (!PeekNamedPipe((HANDLE)proc->hOutput, NULL, 0, NULL, &bytesRead, NULL)) return 0;
+    if (bytesRead == 0) return 0;
+    if (ReadFile((HANDLE)proc->hOutput, buf, buflen, &bytesRead, NULL)) {
+        return (int)bytesRead;
+    }
+    return 0;
+}
+
+int WriteShellInput(ChildProc* proc, const char* buf, int buflen) {
+    if (!proc || !proc->hInput) return 0;
+    DWORD bytesWritten = 0;
+    if (WriteFile((HANDLE)proc->hInput, buf, buflen, &bytesWritten, NULL)) {
+        return (int)bytesWritten;
+    }
+    return 0;
+}
+
+void CloseShell(ChildProc* proc) {
+    if (!proc) return;
+    if (proc->hInput)  { CloseHandle((HANDLE)proc->hInput);  proc->hInput = NULL; }
+    if (proc->hOutput) { CloseHandle((HANDLE)proc->hOutput); proc->hOutput = NULL; }
+    if (proc->hProcess) {
+        TerminateProcess((HANDLE)proc->hProcess, 0);
+        CloseHandle((HANDLE)proc->hProcess);
+        proc->hProcess = NULL;
+    }
+    proc->running = 0;
+}
+
+#endif // _WIN32 && !NO_RAYLIB
+#endif // _WIN32
 
 /* Prevent Windows/Raylib symbol collisions */
 #define WIN32_LEAN_AND_MEAN
 #define NOGDI
 #define NOUSER
 #define NOMINMAX
-#include <windows.h>
-
-#define TERM_MAX_LINES      1024
-#define TERM_MAX_COLUMNS    512
-#define READ_CHUNK_SIZE     4096
-
-typedef struct {
-    HANDLE hProcess;
-    HANDLE hThread;
-    HANDLE hStdOutRd; /* GUI reads from this */
-    HANDLE hStdOutWr; /* child writes to this */
-    HANDLE hStdInRd;  /* child reads from this */
-    HANDLE hStdInWr;  /* GUI writes to this */
-    BOOL   running;
-} ChildProc;
-
-/* Create child process with redirected stdin/stdout, no external console */
-static BOOL LaunchShell(ChildProc *cp, const char *cmdline) {
-    SECURITY_ATTRIBUTES sa = {0};
-    sa.nLength = sizeof(sa);
-    sa.bInheritHandle = TRUE;
-    sa.lpSecurityDescriptor = NULL;
-
-    /* Create pipes: stdout (child -> GUI) and stdin (GUI -> child) */
-    if (!CreatePipe(&cp->hStdOutRd, &cp->hStdOutWr, &sa, 0)) return FALSE;
-    if (!SetHandleInformation(cp->hStdOutRd, HANDLE_FLAG_INHERIT, 0)) return FALSE;
-
-    if (!CreatePipe(&cp->hStdInRd, &cp->hStdInWr, &sa, 0)) return FALSE;
-    if (!SetHandleInformation(cp->hStdInWr, HANDLE_FLAG_INHERIT, 0)) return FALSE;
-
-    STARTUPINFOA si;
-    PROCESS_INFORMATION pi;
-    ZeroMemory(&si, sizeof(si));
-    ZeroMemory(&pi, sizeof(pi));
-
-    si.cb = sizeof(si);
-    si.dwFlags = STARTF_USESTDHANDLES;
-    si.hStdInput  = cp->hStdInRd;
-    si.hStdOutput = cp->hStdOutWr;
-    si.hStdError  = cp->hStdOutWr;
-
-    /* Mutable command line required by CreateProcessA */
-    char mutableCmd[512];
-    snprintf(mutableCmd, sizeof(mutableCmd), "%s", cmdline);
-
-    BOOL ok = CreateProcessA(
-        NULL,
-        mutableCmd,
-        NULL, NULL,
-        TRUE, /* inherit handles so child sees our pipe ends */
-        CREATE_NO_WINDOW, /* run without spawning a separate console window */
-        NULL, NULL,
-        &si, &pi
-    );
-
-    if (!ok) {
-        /* Cleanup pipe ends on failure */
-        CloseHandle(cp->hStdOutRd);
-        CloseHandle(cp->hStdOutWr);
-        CloseHandle(cp->hStdInRd);
-        CloseHandle(cp->hStdInWr);
-        ZeroMemory(cp, sizeof(*cp));
-        return FALSE;
-    }
-
-    /* Save handles/process info */
-    cp->hProcess = pi.hProcess;
-    cp->hThread  = pi.hThread;
-    cp->running  = TRUE;
-
-    /* Parent doesn't need child's ends of the pipes */
-    CloseHandle(cp->hStdOutWr);
-    CloseHandle(cp->hStdInRd);
-
-    return TRUE;
-}
-
-static void CloseShell(ChildProc *cp) {
-    if (!cp || !cp->running) return;
-    /* Try to close stdin to signal EOF */
-    CloseHandle(cp->hStdInWr);
-
-    /* Wait for process to exit and clean up */
-    WaitForSingleObject(cp->hProcess, 2000);
-    CloseHandle(cp->hProcess);
-    CloseHandle(cp->hThread);
-    CloseHandle(cp->hStdOutRd);
-    ZeroMemory(cp, sizeof(*cp));
-}
-
-/* Non-blocking read from child's stdout */
-static int ReadShellOutput(ChildProc *cp, char *buffer, int bufSize) {
-    if (!cp || !cp->running) return 0;
-    DWORD avail = 0;
-    if (!PeekNamedPipe(cp->hStdOutRd, NULL, 0, NULL, &avail, NULL)) return 0;
-    if (avail == 0) return 0;
-    DWORD toRead = (avail > (DWORD)bufSize) ? (DWORD)bufSize : avail;
-    DWORD read = 0;
-    if (!ReadFile(cp->hStdOutRd, buffer, toRead, &read, NULL)) return 0;
-    return (int)read;
-}
-
-/* Write a command line (with newline) to child's stdin */
-static BOOL WriteShellInput(ChildProc *cp, const char *text, int len) {
-    if (!cp || !cp->running) return FALSE;
-    DWORD written = 0;
-    return WriteFile(cp->hStdInWr, text, (DWORD)len, &written, NULL);
-}
 
 int x11(void) {
-    const int screenWidth  = 1024;
-    const int screenHeight = 768;
-    InitWindow(screenWidth, screenHeight, "WNU OS X11");
+    int screenWidth  = 1024;
+    int screenHeight = 768;
+    // Context menu state (must be after raylib include)
+    int showContextMenu = 0;
+    Vector2 contextMenuPos = {0};
+    int contextMenuHover = -1;
+    InitWindow(screenWidth, screenHeight, "X11 Desktop");
+    SetWindowState(FLAG_WINDOW_ALWAYS_RUN);
+    SetWindowFocused();
+    // No fullscreen flag; window will be sized to monitor but windowed
     SetTargetFPS(60);
 
-    /* Load embedded logo */
-    Image     logoImage = LoadImageFromMemory(".png", X11_png, X11_png_len);
-    Texture2D icon      = LoadTextureFromImage(logoImage);
+        // Ensure drawing code is always executed
+    // X11 color palette
+    Color x11_blue    = (Color){ 40,  60, 180, 255}; // X11 blue
+    Color x11_gray    = (Color){200, 200, 210, 255}; // X11 light gray
+    Color x11_dkgray  = (Color){ 60,  60,  70, 255}; // X11 dark gray
+    // Color x11_black   = (Color){  0,   0,   0, 255}; // Unused
+    Color x11_white   = (Color){255, 255, 255, 255};
+    Color x11_border  = (Color){ 80,  80, 120, 255};
+    Color x11_title   = (Color){ 30,  30,  60, 255};
+    Color x11_term_bg = (Color){ 18,  18,  18, 255};
+    Color x11_term_fg = (Color){  0, 255, 128, 255};
+
+    // Load X logo (use your PNG or draw a simple X)
+    Image logoImage = LoadImageFromMemory(".png", X11_png, X11_png_len);
+    Texture2D logo  = LoadTextureFromImage(logoImage);
     UnloadImage(logoImage);
 
-    const float iconScale = 0.5f;
+    // Desktop icon (move lower, right of top bar)
+    const float iconScale = 0.18f;
+    int topBarH = 48;
     int   icon_x = 32;
-    int   icon_y = 80;
-    int   icon_w = (int)(icon.width  * iconScale);
-    int   icon_h = (int)(icon.height * iconScale);
+    int   icon_y = topBarH + 32;
+    int   icon_w = (int)(logo.width  * iconScale);
+    int   icon_h = (int)(logo.height * iconScale);
 
-    /* Terminal window state */
+    // Terminal window state
     int terminal_open = 0;
-    Rectangle termWin = (Rectangle){ 300.0f, 200.0f, 640.0f, 420.0f };
+    Rectangle termWin = (Rectangle){ screenWidth * 0.31f, screenHeight * 0.23f, screenWidth * 0.62f, screenHeight * 0.55f };
     int dragging = 0;
     Vector2 dragOffset = {0};
+    int close_hover = 0;
 
-    /* Terminal content buffer */
+    // Terminal content buffer
     char  lines[TERM_MAX_LINES][TERM_MAX_COLUMNS];
     int   lineCount = 0;
     char  inputLine[TERM_MAX_COLUMNS] = {0};
@@ -160,29 +183,64 @@ int x11(void) {
 
     ChildProc shell = {0};
 
-    while (!WindowShouldClose()) {
-        /* Handle click on terminal icon to launch shell in-window */
+    int running = 1;
+    int debug_window_should_close = 0;
+    int frameCount = 0;
+    // char lastInput[TERM_MAX_COLUMNS] = {0}; // Unused
+    while (running) {
+        frameCount++;
+        // Wait a few frames before checking for close to avoid false positive
+        if (frameCount > 5 && WindowShouldClose()) {
+            debug_window_should_close = 1;
+            running = 0;
+        }
+
+        // Handle right-click anywhere (for easier testing)
+        if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
+            Vector2 mouse = GetMousePosition();
+            showContextMenu = 1;
+            contextMenuPos = mouse;
+            printf("[DEBUG] Context menu triggered at (%d, %d)\n", (int)mouse.x, (int)mouse.y); fflush(stdout);
+        }
+        // Handle left-click on context menu
+        if (showContextMenu && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            Vector2 mouse = GetMousePosition();
+            int menuX = (int)contextMenuPos.x;
+            int menuY = (int)contextMenuPos.y;
+            int menuW = 180, menuH = 32;
+            Rectangle aboutRect = {menuX, menuY, menuW, menuH};
+            if (CheckCollisionPointRec(mouse, aboutRect)) {
+                printf("About X11 Desktop: WNU OS X11 GUI\n"); fflush(stdout);
+            }
+            showContextMenu = 0;
+        }
+        // Handle click on terminal icon to launch shell in-window
         if (!terminal_open && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
             Vector2 mouse = GetMousePosition();
             if (mouse.x >= icon_x && mouse.x <= icon_x + icon_w &&
                 mouse.y >= icon_y && mouse.y <= icon_y + icon_h) {
+                // Only open terminal, never close window
                 terminal_open = 1;
-                /* Launch your shell without external console; pipes connected */
+                shell.running = 1; // Always keep running for stub
                 LaunchShell(&shell, "\"C:\\WNU\\WNU OS\\wnuos.exe\"");
-                /* Clear terminal buffer */
                 lineCount = 0;
                 inputLen = 0;
                 inputLine[0] = '\0';
             }
         }
 
-        /* Terminal window dragging */
+        // Terminal window dragging and close button
         if (terminal_open) {
+            Vector2 m = GetMousePosition();
+            Rectangle titleBar = (Rectangle){ termWin.x, termWin.y, termWin.width, 28.0f };
+            Rectangle closeBtn = (Rectangle){ termWin.x + termWin.width - 32, termWin.y, 28, 28 };
+            close_hover = CheckCollisionPointRec(m, closeBtn);
             if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-                Vector2 m = GetMousePosition();
-                Rectangle titleBar = (Rectangle){ termWin.x, termWin.y, termWin.width, 24.0f };
-                if (m.x >= titleBar.x && m.x <= titleBar.x + titleBar.width &&
-                    m.y >= titleBar.y && m.y <= titleBar.y + titleBar.height) {
+                if (CheckCollisionPointRec(m, closeBtn)) {
+                    // Only close terminal window, not the whole GUI
+                    terminal_open = 0;
+                    CloseShell(&shell);
+                } else if (CheckCollisionPointRec(m, titleBar)) {
                     dragging = 1;
                     dragOffset.x = m.x - termWin.x;
                     dragOffset.y = m.y - termWin.y;
@@ -190,21 +248,19 @@ int x11(void) {
             }
             if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) dragging = 0;
             if (dragging) {
-                Vector2 m = GetMousePosition();
                 termWin.x = m.x - dragOffset.x;
                 termWin.y = m.y - dragOffset.y;
             }
         }
 
-        /* Read real shell output and append to terminal buffer */
+        // Read real shell output and append to terminal buffer
         if (terminal_open && shell.running) {
             char chunk[READ_CHUNK_SIZE];
             int got = ReadShellOutput(&shell, chunk, sizeof(chunk));
             if (got > 0) {
-                /* Split chunk into lines; append to buffer */
                 int start = 0;
                 for (int i = 0; i < got; i++) {
-                    if (chunk[i] == '\r') continue; /* ignore CR on Windows */
+                    if (chunk[i] == '\r') continue;
                     if (chunk[i] == '\n') {
                         int len = i - start;
                         if (len > 0) {
@@ -214,14 +270,12 @@ int x11(void) {
                                 lines[lineCount][copyLen] = '\0';
                                 lineCount++;
                             } else {
-                                /* scroll up: drop first line */
                                 memmove(lines, lines + 1, sizeof(lines[0]) * (TERM_MAX_LINES - 1));
                                 int copyLen2 = (len < TERM_MAX_COLUMNS - 1) ? len : (TERM_MAX_COLUMNS - 1);
                                 memcpy(lines[TERM_MAX_LINES - 1], &chunk[start], copyLen2);
                                 lines[TERM_MAX_LINES - 1][copyLen2] = '\0';
                             }
                         } else {
-                            /* blank line */
                             if (lineCount < TERM_MAX_LINES) {
                                 lines[lineCount][0] = '\0';
                                 lineCount++;
@@ -230,11 +284,9 @@ int x11(void) {
                         start = i + 1;
                     }
                 }
-                /* Any remaining partial line (no newline yet) */
                 if (start < got) {
                     int len = got - start;
                     int copyLen = (len < TERM_MAX_COLUMNS - 1) ? len : (TERM_MAX_COLUMNS - 1);
-                    /* Append to the last line if it exists and isn't full */
                     if (lineCount == 0 || lines[lineCount - 1][0] == '\0') {
                         if (lineCount < TERM_MAX_LINES) {
                             memcpy(lines[lineCount], &chunk[start], copyLen);
@@ -250,102 +302,187 @@ int x11(void) {
                     }
                 }
             }
+        }
 
-            /* Keyboard input into terminal */
+        // Keyboard input into terminal (always active when terminal is open)
+        if (terminal_open) {
             int c;
+            char tempInput[TERM_MAX_COLUMNS];
             while ((c = GetCharPressed()) > 0) {
-                if (c == 8) { /* backspace */
-                    if (inputLen > 0) {
-                        inputLen--;
-                        inputLine[inputLen] = '\0';
-                    }
-                } else if (c == '\r' || c == '\n') {
-                    /* Echo input line into buffer and send to child with newline */
-                    if (lineCount < TERM_MAX_LINES) {
-                        snprintf(lines[lineCount], TERM_MAX_COLUMNS, "> %s", inputLine);
-                        lineCount++;
-                    }
-                    char toSend[TERM_MAX_COLUMNS + 2];
-                    int sendLen = snprintf(toSend, sizeof(toSend), "%s\r\n", inputLine);
-                    WriteShellInput(&shell, toSend, sendLen);
-                    inputLen = 0;
-                    inputLine[0] = '\0';
-                } else if (c >= 32 && c < 127) { /* printable ASCII */
+                printf("[DEBUG] Key pressed: %d\n", c); fflush(stdout);
+                if (c >= 32 && c < 127) {
                     if (inputLen < TERM_MAX_COLUMNS - 1) {
                         inputLine[inputLen++] = (char)c;
                         inputLine[inputLen] = '\0';
                     }
                 }
             }
+            // Check for ENTER using IsKeyPressed
+            if (IsKeyPressed(KEY_ENTER)) {
+                printf("[DEBUG] ENTER pressed!\n"); fflush(stdout);
+                // Store input in temp before clearing
+                strncpy(tempInput, inputLine, TERM_MAX_COLUMNS-1);
+                tempInput[TERM_MAX_COLUMNS-1] = '\0';
+                if (shell.running) {
+                    char toSend[TERM_MAX_COLUMNS + 2];
+                    int sendLen = snprintf(toSend, sizeof(toSend), "%s\r\n", inputLine);
+                    WriteShellInput(&shell, toSend, sendLen);
+                }
+                inputLen = 0;
+                inputLine[0] = '\0';
+                // Always append tempInput to buffer after clearing
+                if (lineCount < TERM_MAX_LINES) {
+                    int maxPrompt = TERM_MAX_COLUMNS - 2;
+                    snprintf(lines[lineCount], TERM_MAX_COLUMNS, "> %.*s", maxPrompt, tempInput);
+                    lineCount++;
+                    printf("[DEBUG] Added to buffer: %s\n", tempInput); fflush(stdout);
+                }
+            }
+            if (IsKeyPressed(KEY_BACKSPACE)) {
+                if (inputLen > 0) {
+                    inputLen--;
+                    inputLine[inputLen] = '\0';
+                }
+            }
         }
 
         BeginDrawing();
-        ClearBackground(RAYWHITE);
+        // X11 blue background
+        ClearBackground(x11_blue);
 
-        /* Top bar */
-        DrawRectangle(0, 0, screenWidth, 32, DARKGRAY);
-        DrawTextEx(GetFontDefault(), "WNU OS X11 GUI", (Vector2){10.0f, 8.0f}, 16.0f, 1.0f, RAYWHITE);
+        // Top bar (X11 style)
+        DrawRectangle(0, 0, screenWidth, topBarH, x11_title);
+        // Draw a smaller X logo, left-aligned
+        float logoScaleBar = 0.18f;
+        int logoBarW = (int)(logo.width * logoScaleBar);
+        int logoBarH = (int)(logo.height * logoScaleBar);
+        int logoBarX = 12;
+        int logoBarY = (topBarH - logoBarH) / 2;
+        DrawTextureEx(logo, (Vector2){(float)logoBarX, (float)logoBarY}, 0.0f, logoScaleBar, x11_white);
+        // Draw X11 and WNU OS X11 text in white/gray, spaced right of logo
+        int textX = logoBarX + logoBarW + 18;
+        int textY = logoBarY + 2;
+        DrawText("X11", textX, textY, 28, x11_white);
+        DrawText("WNU OS X11", textX + 70, textY + 4, 20, x11_gray);
 
-        /* Desktop background */
-        DrawRectangle(0, 32, screenWidth, screenHeight - 32, LIGHTGRAY);
-        DrawText("Welcome to WNU OS X11 GUI (raylib)", 40, 60, 20, DARKGRAY);
+        // Desktop background
+        DrawRectangle(0, topBarH, screenWidth, screenHeight - topBarH, x11_gray);
+        DrawText("Welcome to X11 Desktop", (int)(screenWidth*0.06f), (int)(screenHeight*0.08f), (int)(topBarH*0.7f), x11_title);
 
-        /* Terminal icon */
-        DrawTextureEx(icon, (Vector2){(float)icon_x, (float)icon_y}, 0.0f, iconScale, WHITE);
-        DrawText("Terminal", icon_x, icon_y + icon_h + 2, 12, DARKGRAY);
+        // Terminal icon
+        DrawTextureEx(logo, (Vector2){(float)icon_x, (float)icon_y}, 0.0f, iconScale, x11_white);
+        DrawText("Terminal", icon_x, icon_y + icon_h + 8, 18, x11_title);
 
-        /* Terminal window */
-        if (terminal_open) {
-            DrawRectangleRec(termWin, BLACK);
-            DrawRectangle((int)termWin.x, (int)termWin.y, (int)termWin.width, 24, DARKGRAY);
-            DrawText("Terminal", (int)(termWin.x + 8), (int)(termWin.y + 4), 16, RAYWHITE);
-
-            /* Draw terminal contents (real shell output) */
-            int y = (int)(termWin.y + 32);
-            int x = (int)(termWin.x + 8);
-            int maxY = (int)(termWin.y + termWin.height - 36);
-
-            /* Show lines from bottom if too many: simple viewport */
-            int first = 0;
-            int maxLinesOnScreen = (maxY - y) / 18;
-            if (lineCount > maxLinesOnScreen) first = lineCount - maxLinesOnScreen;
-
-            for (int i = first; i < lineCount; i++) {
-                DrawText(lines[i], x, y, 14, GREEN);
-                y += 18;
-                if (y > maxY) break;
-            }
-
-            /* Draw input prompt */
-            DrawRectangle(x - 4, maxY + 8, (int)termWin.width - 16, 20, (Color){32,32,32,255});
-            DrawText(TextFormat("~$ %s", inputLine), x, maxY + 10, 14, RAYWHITE);
+        // Draw context menu if active
+        if (showContextMenu) {
+            int menuX = (int)contextMenuPos.x;
+            int menuY = (int)contextMenuPos.y;
+            int menuW = 180, menuH = 32;
+            Rectangle aboutRect = {menuX, menuY, menuW, menuH};
+            Color menuBg = (Color){60, 60, 70, 255};
+            Color menuBorder = (Color){80, 80, 120, 255};
+            Color menuHighlight = (Color){40, 60, 180, 255};
+            Vector2 mouse = GetMousePosition();
+            int hover = CheckCollisionPointRec(mouse, aboutRect);
+            DrawRectangleRec(aboutRect, hover ? menuHighlight : menuBg);
+            DrawRectangleLines(menuX, menuY, menuW, menuH, menuBorder);
+            DrawText("About X11 Desktop", menuX + 12, menuY + 7, 18, x11_white);
+            DrawRectangleRec(aboutRect, hover ? menuHighlight : menuBg);
+            DrawRectangleLines(menuX, menuY, menuW, menuH, menuBorder);
+            DrawText("Exit X11S", menuX + 12, menuY + 7, 18, x11_white);
         }
 
+        // Terminal window
+        if (terminal_open) {
+            // Window border and background
+            int border = (int)(screenWidth * 0.002f);
+            int titleH = (int)(termWin.height * 0.07f);
+            DrawRectangleRec(termWin, x11_border);
+            DrawRectangle((int)termWin.x + border, (int)termWin.y + border, (int)termWin.width - 2*border, (int)termWin.height - 2*border, x11_term_bg);
+            // Title bar
+            DrawRectangle((int)termWin.x + border, (int)termWin.y + border, (int)termWin.width - 2*border, titleH, x11_title);
+            DrawText("Terminal", (int)termWin.x + 16, (int)termWin.y + border + 8, (int)(titleH*0.6f), x11_white);
+            // Close button
+            int closeBtnSz = titleH-4;
+            DrawRectangleRec((Rectangle){termWin.x + termWin.width - closeBtnSz - border, termWin.y + border + 2, closeBtnSz, closeBtnSz}, close_hover ? RED : x11_dkgray);
+            DrawText("X", (int)(termWin.x + termWin.width - closeBtnSz/1.5f - border), (int)(termWin.y + border + 6), (int)(titleH*0.5f), x11_white);
+
+            // Terminal contents
+            int y = (int)(termWin.y + titleH + 12);
+            int x = (int)(termWin.x + 16);
+            int maxY = (int)(termWin.y + termWin.height - 36);
+            int first = 0;
+            int lineH = (int)(termWin.height * 0.045f);
+            int maxLinesOnScreen = (maxY - y) / lineH;
+            if (lineCount > maxLinesOnScreen) first = lineCount - maxLinesOnScreen;
+            for (int i = first; i < lineCount; i++) {
+                DrawTextEx(GetFontDefault(), lines[i], (Vector2){(float)x, (float)y}, (float)lineH, 1.0f, x11_term_fg);
+                y += lineH;
+                if (y > maxY) break;
+            }
+            // Input prompt
+            int promptH = (int)(termWin.height * 0.055f);
+            DrawRectangle(x - 4, maxY + 8, (int)termWin.width - 32, promptH, x11_dkgray);
+            // Always draw prompt and current input at the bottom, not as a line in the buffer
+            DrawText("> ", x, maxY + 10, (int)(promptH*0.7f), x11_white);
+            DrawText(inputLine, x + MeasureText("> ", (int)(promptH*0.7f)), maxY + 10, (int)(promptH*0.7f), x11_white);
+        }
+
+        // Debug overlay if window close event triggered
+        if (debug_window_should_close) {
+            DrawRectangle(0, 0, 400, 40, RED);
+            DrawText("[DEBUG] WindowShouldClose() triggered!", 10, 10, 20, WHITE);
+        }
         EndDrawing();
 
-        /* If child process exits, close it and keep window open (optional) */
-        if (shell.running) {
+        // If child process exits, close it and keep terminal window open
+        // Only check for shell exit if the terminal is open and shell was running
+        if (terminal_open && shell.running) {
             DWORD status = WaitForSingleObject(shell.hProcess, 0);
             if (status == WAIT_OBJECT_0) {
                 CloseShell(&shell);
+                shell.running = 0;
+                // Show message in terminal buffer
+                if (lineCount < TERM_MAX_LINES) {
+                    snprintf(lines[lineCount], TERM_MAX_COLUMNS, "[X11] Shell exited. Click Terminal icon to restart.");
+                    Sleep(100); // Small delay to ensure message is seen
+                    terminal_open = 0;
+                    lineCount++;
+
+                }
             }
         }
     }
 
-    /* Cleanup */
+    // Cleanup
     CloseShell(&shell);
-    UnloadTexture(icon);
-    CloseWindow();
-    return 0;
+    UnloadTexture(logo);
+
+        ((void (*)(void))CloseWindow)();
+        return 0;
 }
 
-#else  /* NO_RAYLIB build (shell-only) */
+#else /* NO_RAYLIB build (shell-only) */
+
+#include <windows.h>
+
+typedef struct {
+    HANDLE hProcess;
+    HANDLE hInput;
+    HANDLE hOutput;
+    int running;
+} ChildProc;
+
+// (Implementations for LaunchShell, ReadShellOutput, WriteShellInput, CloseShell go here for shell-only build)
 
 int x11(void) {
     /* Fallback: launch external GUI if someone calls x11() in shell build */
+
     int rc = system("cmd /c start \"\" \"C:\\WNU\\WNU OS\\x11.exe\"");
     (void)rc;
     return 0;
 }
 
-#endif
+
+
+#endif /* NO_RAYLIB */
