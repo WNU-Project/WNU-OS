@@ -401,7 +401,7 @@ int x11(void) {
             DrawRectangle((int)termWin.x + border, (int)termWin.y + border, (int)termWin.width - 2*border, (int)termWin.height - 2*border, x11_term_bg);
             // Title bar
             DrawRectangle((int)termWin.x + border, (int)termWin.y + border, (int)termWin.width - 2*border, titleH, x11_title);
-            DrawText("Terminal", (int)termWin.x + 16, (int)termWin.y + border + 8, (int)(titleH*0.6f), x11_white);
+            DrawText("xterm", (int)termWin.x + 16, (int)termWin.y + border + 8, (int)(titleH*0.6f), x11_white);
             // Close button
             int closeBtnSz = titleH-4;
             DrawRectangleRec((Rectangle){termWin.x + termWin.width - closeBtnSz - border, termWin.y + border + 2, closeBtnSz, closeBtnSz}, close_hover ? RED : x11_dkgray);
