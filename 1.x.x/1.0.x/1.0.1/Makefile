@@ -8,8 +8,7 @@ GUI_TARGET   = x11.exe
 
 # Source files
 SHELL_SRCS = main.c boot.c userlogin.c poweroff.c halt.c reboot.c \
-			 wsys2/wsys2.c wsys2/package.c tty_session.c motd.c \
-			 X11/x11.c
+			 wsys2/wsys2.c wsys2/package.c tty_session.c motd.c X11/x11.c
 SHELL_OBJS = $(SHELL_SRCS:.c=.o)
 
 GUI_SRCS = X11/main.c X11/x11.c
