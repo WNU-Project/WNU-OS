@@ -207,10 +207,21 @@ int x11(void) {
             int menuX = (int)contextMenuPos.x;
             int menuY = (int)contextMenuPos.y;
             int menuW = 180, menuH = 32;
-            Rectangle aboutRect = {menuX, menuY, menuW, menuH};
-            Rectangle exitRect  = {menuX, menuY + menuH, menuW, menuH};
-            if (CheckCollisionPointRec(mouse, aboutRect)) {
-                printf("About X11 Desktop: WNU OS X11 GUI\n"); fflush(stdout);
+            Rectangle xtermRect = {menuX, menuY, menuW, menuH};
+            Rectangle aboutRect = {menuX, menuY + menuH, menuW, menuH};
+            Rectangle exitRect  = {menuX, menuY + 2*menuH, menuW, menuH};
+            if (CheckCollisionPointRec(mouse, xtermRect)) {
+                // Launch terminal if not open
+                if (!terminal_open) {
+                    terminal_open = 1;
+                    shell.running = 1;
+                    LaunchShell(&shell, "\"C:\\WNU\\WNU OS\\wnuos.exe\"");
+                    lineCount = 0;
+                    inputLen = 0;
+                    inputLine[0] = '\0';
+                }
+            } else if (CheckCollisionPointRec(mouse, aboutRect)) {
+                printf("About X11 Desktop: WNU OS X11 GUI Made In: C With Raylib\n"); fflush(stdout);
             } else if (CheckCollisionPointRec(mouse, exitRect)) {
                 printf("[X11] Exiting X11 Desktop...\n"); fflush(stdout);
                 running = 0;
@@ -312,7 +323,6 @@ int x11(void) {
             int c;
             char tempInput[TERM_MAX_COLUMNS];
             while ((c = GetCharPressed()) > 0) {
-                printf("[DEBUG] Key pressed: %d\n", c); fflush(stdout);
                 if (c >= 32 && c < 127) {
                     if (inputLen < TERM_MAX_COLUMNS - 1) {
                         inputLine[inputLen++] = (char)c;
@@ -322,7 +332,6 @@ int x11(void) {
             }
             // Check for ENTER using IsKeyPressed
             if (IsKeyPressed(KEY_ENTER)) {
-                printf("[DEBUG] ENTER pressed!\n"); fflush(stdout);
                 // Store input in temp before clearing
                 strncpy(tempInput, inputLine, TERM_MAX_COLUMNS-1);
                 tempInput[TERM_MAX_COLUMNS-1] = '\0';
@@ -338,7 +347,6 @@ int x11(void) {
                     int maxPrompt = TERM_MAX_COLUMNS - 2;
                     snprintf(lines[lineCount], TERM_MAX_COLUMNS, "> %.*s", maxPrompt, tempInput);
                     lineCount++;
-                    printf("[DEBUG] Added to buffer: %s\n", tempInput); fflush(stdout);
                 }
             }
             if (IsKeyPressed(KEY_BACKSPACE)) {
@@ -385,18 +393,24 @@ int x11(void) {
             Color menuBorder = (Color){80, 80, 120, 255};
             Color menuHighlight = (Color){40, 60, 180, 255};
             Vector2 mouse = GetMousePosition();
-            Rectangle aboutRect = {menuX, menuY, menuW, menuH};
-            Rectangle exitRect  = {menuX, menuY + menuH, menuW, menuH};
+            Rectangle xtermRect = {menuX, menuY, menuW, menuH};
+            Rectangle aboutRect = {menuX, menuY + menuH, menuW, menuH};
+            Rectangle exitRect  = {menuX, menuY + 2*menuH, menuW, menuH};
+            int hoverXterm = CheckCollisionPointRec(mouse, xtermRect);
             int hoverAbout = CheckCollisionPointRec(mouse, aboutRect);
             int hoverExit  = CheckCollisionPointRec(mouse, exitRect);
+            // Draw XTerm item
+            DrawRectangleRec(xtermRect, hoverXterm ? menuHighlight : menuBg);
+            DrawRectangleLines(menuX, menuY, menuW, menuH, menuBorder);
+            DrawText("XTerm", menuX + 12, menuY + 7, 18, x11_white);
             // Draw About item
             DrawRectangleRec(aboutRect, hoverAbout ? menuHighlight : menuBg);
-            DrawRectangleLines(menuX, menuY, menuW, menuH, menuBorder);
-            DrawText("About X11 Desktop", menuX + 12, menuY + 7, 18, x11_white);
+            DrawRectangleLines(menuX, menuY + menuH, menuW, menuH, menuBorder);
+            DrawText("About X11 Desktop", menuX + 12, menuY + menuH + 7, 18, x11_white);
             // Draw Exit item
             DrawRectangleRec(exitRect, hoverExit ? menuHighlight : menuBg);
-            DrawRectangleLines(menuX, menuY + menuH, menuW, menuH, menuBorder);
-            DrawText("Exit X11", menuX + 12, menuY + menuH + 7, 18, x11_white);
+            DrawRectangleLines(menuX, menuY + 2*menuH, menuW, menuH, menuBorder);
+            DrawText("Exit X11", menuX + 12, menuY + 2*menuH + 7, 18, x11_white);
         }
 
         // Terminal window
