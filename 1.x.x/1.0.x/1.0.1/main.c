@@ -13,6 +13,8 @@
 #include "wsys2/wsys2.h"  // Include WSYS2 package manager
 #include "tty_session.h" // Include TTY session management
 #include "motd.h"      // Include motd function
+// Include GUI header so main can call x11()
+#include "X11/x11.h"
 
 #ifndef PROCESSOR_ARCHITECTURE_ARM64
 #define PROCESSOR_ARCHITECTURE_ARM64 12
@@ -249,6 +251,9 @@ int main(void) {
     char username[100];
     char computername[MAX_COMPUTERNAME_LENGTH + 1];
     DWORD size = sizeof(computername);
+    char current_user[100];
+    DWORD user_len = sizeof(current_user);
+    char current_tty[16];
 
     // Get computer name
     if (!GetComputerNameA(computername, &size)) {
@@ -257,107 +262,104 @@ int main(void) {
 
     // Run boot sequence
     boot_sequence();
-
-    // Get current Windows username
-    char current_user[100];
-    DWORD user_len = sizeof(current_user);
-    if (!GetUserNameA(current_user, &user_len)) {
-        strcpy(current_user, "unknown");
-    }
-
-    /* Current tty name (default tty1). This will be saved/loaded via tty_session. */
-    char current_tty[16] = "tty1";
-
-    // --- Getty target login screen ---
-    printf("\n");
-    printf("WNU OS 1.0.1 Update 2 %s %s %s %s US EDT UTC -4:00\n", computername, current_tty, __DATE__, __TIME__);
-    printf("\n");
-    printf("%s login: ", computername);
-    fflush(stdout);
-
-    if (!fgets(username, sizeof(username), stdin)) {
-        fprintf(stderr, "Login incorrect\n");
-        return 1;
-    }
-    
-    // Remove newline character from username if present
-    username[strcspn(username, "\n")] = 0;
-
-    // Check if user is root
-    if (strcmp(username, "root") == 0) {
-        printf("Welcome, root!\n");
-        _chdir("C:\\");
-        isnormaluser = 0; // Root user mode
-    } else if (strcmp(username, current_user) == 0) {
-        // User entered their actual Windows username, now verify password
-        char password[100];
-        printf("Password: ");
-        fflush(stdout);
-        
-        // No need to clear input buffer since fgets() already consumed the newline
-        
-        // Read password with Unix-style hidden input (no visual feedback)
-        int i = 0;
-        int c;
-        while (i < 99) {
-            c = _getch(); // Get character without echoing to console
-            
-            if (c == '\r' || c == '\n') { // Enter key pressed
-                break;
-            } else if (c == '\b' || c == 127) { // Backspace pressed
-                if (i > 0) {
-                    // No visual feedback for backspace in Unix style
-                    i--;
-                }
-            } else if (c >= 32 && c <= 126) { // Printable characters
-                password[i] = c;
-                // No visual feedback - completely hidden like Unix
-                i++;
-            }
-        }
-        password[i] = '\0'; // Null-terminate the password
-        printf("\n"); // Move to next line after password input
-        
-        // Authenticate with password or PIN
-        if (authenticate_user(username, password)) {
-            // Authentication successful
-            printf("Welcome, %s!\n", username);
-            
-            // Determine if it's a PIN or password based on length and content
-            if (strlen(password) >= 4 && strlen(password) <= 6 && 
-                (strspn(password, "0123456789") == strlen(password) || 
-                 strcmp(password, "COOL1") == 0)) {
-                printf("PIN authentication successful\n");
-            } else {
-                printf("Password authentication successful\n");
-            }
-            
-            // Set home directory to C:\Users\{username}
-            char home_path[256];
-            snprintf(home_path, sizeof(home_path), "C:\\Users\\%s", username);
-            if (_chdir(home_path) != 0) {
-                perror("Failed to set home directory");
-            } else {
-                printf("Home directory set to: %s\n", home_path);
-            }
-            
-            isnormaluser = 1; // Normal user mode
-        } else {
-            // Authentication failed
-            printf("Authentication failed for user: %s\n", username);
-            printf("Debug: You entered '%s' (length: %zu)\n", password, strlen(password));
-            printf("Tip: Try your Windows password or PIN (4-6 digits)\n");
-            return 1;
-        }
-    } else {
-        printf("Access denied for user: %s\n", username);
-        return 1;
-    }
-
-    motd(); // Display message of the day
-
-    // --- Shell loop ---
     while (1) {
+         // Get current Windows username
+        if (!GetUserNameA(current_user, &user_len)) {
+            strcpy(current_user, "unknown");
+        }
+
+        strcpy(current_tty, "tty1");
+
+        // --- Getty target login screen ---
+        printf("\n");
+        printf("WNU OS 1.0.1 Update 2 %s %s %s %s US EDT UTC -4:00\n", computername, current_tty, __DATE__, __TIME__);
+        printf("\n");
+        printf("%s login: ", computername);
+        fflush(stdout);
+
+        if (!fgets(username, sizeof(username), stdin)) {
+            fprintf(stderr, "Login incorrect\n");
+            continue;
+        }
+        
+        // Remove newline character from username if present
+        username[strcspn(username, "\n")] = 0;
+
+        // Check if user is root
+        if (strcmp(username, "root") == 0) {
+            printf("Welcome, root!\n");
+            _chdir("C:\\");
+            isnormaluser = 0; // Root user mode
+        } else if (strcmp(username, current_user) == 0) {
+            // User entered their actual Windows username, now verify password
+            char password[100];
+            printf("Password: ");
+            fflush(stdout);
+            
+            // No need to clear input buffer since fgets() already consumed the newline
+            
+            // Read password with Unix-style hidden input (no visual feedback)
+            int i = 0;
+            int c;
+            while (i < 99) {
+                c = _getch(); // Get character without echoing to console
+                
+                if (c == '\r' || c == '\n') { // Enter key pressed
+                    break;
+                } else if (c == '\b' || c == 127) { // Backspace pressed
+                    if (i > 0) {
+                        // No visual feedback for backspace in Unix style
+                        i--;
+                    }
+                } else if (c >= 32 && c <= 126) { // Printable characters
+                    password[i] = c;
+                    // No visual feedback - completely hidden like Unix
+                    i++;
+                }
+            }
+            password[i] = '\0'; // Null-terminate the password
+            printf("\n"); // Move to next line after password input
+            
+            // Authenticate with password or PIN
+            if (authenticate_user(username, password)) {
+                // Authentication successful
+                printf("Welcome, %s!\n", username);
+                
+                // Determine if it's a PIN or password based on length and content
+                if (strlen(password) >= 4 && strlen(password) <= 6 && 
+                    (strspn(password, "0123456789") == strlen(password) || 
+                     strcmp(password, "COOL1") == 0)) {
+                    printf("PIN authentication successful\n");
+                } else {
+                    printf("Password authentication successful\n");
+                }
+                
+                // Set home directory to C:\Users\{username}
+                char home_path[256];
+                snprintf(home_path, sizeof(home_path), "C:\\Users\\%s", username);
+                if (_chdir(home_path) != 0) {
+                    perror("Failed to set home directory");
+                } else {
+                    printf("Home directory set to: %s\n", home_path);
+                }
+                
+                isnormaluser = 1; // Normal user mode
+            } else {
+                // Authentication failed
+                printf("Authentication failed for user: %s\n", username);
+                printf("Debug: You entered '%s' (length: %zu)\n", password, strlen(password));
+                printf("Tip: Try your Windows password or PIN (4-6 digits)\n");
+                continue;
+            }
+        } else {
+            printf("Access denied for user: %s\n", username);
+            continue;
+        }
+
+        motd(); // Display message of the day
+
+        // --- Shell loop ---
+        while (1) {
         char cwd[1024];
         if (!_getcwd(cwd, sizeof(cwd))) {
             strcpy(cwd, "?");
@@ -427,7 +429,7 @@ int main(void) {
             Sleep(10000);
             system("cls");
             if (poweroff_sequence() == 0) {
-                break; // End the shell if poweroff returns 0
+                exit(0); // Terminate shell and program
             }
         } 
         else if (strcmp(command, "poweroff now") == 0) {
@@ -435,7 +437,7 @@ int main(void) {
             Sleep(5);
             system("cls");
             if (poweroff_sequence() == 0) {
-                break; // End the shell if poweroff returns 0
+                exit(0); // Terminate shell and program
             }
         }
         else if (strcmp(command, "halt") == 0) {
@@ -497,8 +499,7 @@ int main(void) {
                 Sleep(1000);
                 printf("\033[36mWelcome back to WNU OS!\033[0m\n\n");
                 
-                // Continue with shell loop (simulate fresh start)
-                continue;
+                break;
             }
         } 
         else if (strcmp(command, "clear") == 0 || strcmp(command, "cls") == 0) {
@@ -894,10 +895,14 @@ int main(void) {
         else if (strcmp(command, "tty") == 0) {
             printf("%s\n", current_tty);
         }
+        else if (strcmp(command, "startx") == 0) {
+            printf("Starting graphical environment...\n");
+            x11();
+        }
         else if (strlen(command) > 0) {
             system(command); // Run external command
         }
     }
-
+    }
     return 0;
 }

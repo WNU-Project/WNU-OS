@@ -10,8 +10,8 @@ The following versions of WNU OS are currently supported with security updates:
 
 | Version | Supported          | Status | Security Notes |
 | ------- | ------------------ | ------ | -------------- |
-| 1.0.0   | :x: | Current Stable | Full security support |
-| 1.0.1   | :white_check_mark: | Current Stable | Security patches included |
+| 1.0.0   | :x: | Current Stable | No security support |
+| 1.0.1   | :white_check_mark: | Current Stable | Minor patches included |
 | 1.1.x   | :construction:     | Future Release | Will include security improvements |
 
 ## 🔐 Security Features

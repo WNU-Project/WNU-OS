@@ -1,19 +1,38 @@
 # Compiler and flags
-CC = gcc
-CFLAGS = -Wall -Wextra -std=c11 -Iwsys2
+CC = C:\msys64\mingw64\bin\gcc.exe
+CFLAGS = -Wall -Wextra -std=c11 -Iwsys2 -D_CRT_SECURE_NO_WARNINGS
 
-# Output executable name
-TARGET = wnuos.exe
+# Output executable names
+SHELL_TARGET = wnuos.exe
+GUI_TARGET   = x11.exe
 
 # Source files
-SRCS = main.c boot.c userlogin.c poweroff.c halt.c reboot.c wsys2/wsys2.c wsys2/package.c tty_session.c motd.c
-OBJS = $(SRCS:.c=.o)
+SHELL_SRCS = main.c boot.c userlogin.c poweroff.c halt.c reboot.c \
+			 wsys2/wsys2.c wsys2/package.c tty_session.c motd.c \
+			 X11/x11.c
+SHELL_OBJS = $(SHELL_SRCS:.c=.o)
+
+GUI_SRCS = X11/main.c X11/x11.c
+GUI_OBJS = $(GUI_SRCS:.c=.o)
+
+# Libraries
+SHELL_LIBS = -LX11 -lraylib -lgdi32 -luser32 -ladvapi32 -lnetapi32 -lkernel32 -lwininet -lws2_32 -lwinmm
+GUI_LIBS   = -LX11 -lraylib -lgdi32 -luser32 -ladvapi32 -lnetapi32 -lkernel32 -lwininet -lws2_32 -lwinmm
 
 # Default build
-all: $(TARGET)
+all: $(SHELL_TARGET) $(GUI_TARGET)
 
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ -lgdi32 -luser32 -ladvapi32 -lnetapi32 -lkernel32 -Wl,-subsystem,console -lwininet
+# Build shell (console app)
+$(SHELL_TARGET): $(SHELL_OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ \
+	-Wl,--start-group $(SHELL_LIBS) -Wl,--end-group \
+	-Wl,-subsystem,console
+
+# Build GUI (window app, links raylib)
+$(GUI_TARGET): $(GUI_OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ \
+	-Wl,--start-group $(GUI_LIBS) -Wl,--end-group \
+	-Wl,-subsystem,windows
 
 # Compile .c to .o
 %.o: %.c
@@ -21,6 +40,8 @@ $(TARGET): $(OBJS)
 
 # Clean build artifacts
 clean:
-	del /Q $(OBJS) $(TARGET) 2>nul || rm -f $(OBJS) $(TARGET)
+	@echo Cleaning build artifacts...
+	-@rm -f $(SHELL_OBJS) $(GUI_OBJS) $(SHELL_TARGET) $(GUI_TARGET) 2>/dev/null || true
+	-@cmd /C "del /Q $(SHELL_OBJS) $(GUI_OBJS) $(SHELL_TARGET) $(GUI_TARGET) 2>nul" 2>nul || true
 
 .PHONY: all clean

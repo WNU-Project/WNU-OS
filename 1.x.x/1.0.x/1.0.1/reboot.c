@@ -7,6 +7,7 @@
 #include <conio.h>    // for _kbhit and _getch
 #include "reboot.h"
 #include "boot.h"
+#include "poweroff.h"
 
 // ANSI color codes
 #define RESET   "\033[0m"
@@ -120,6 +121,8 @@ int reboot_sequence() {
     GetConsoleMode(hOut, &dwMode);
     dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
     SetConsoleMode(hOut, dwMode);
+    time_t start = time(NULL);
+    int duration = 5; // seconds
     
     // Seed random number generator
     srand((unsigned int)time(NULL));
@@ -152,69 +155,15 @@ int reboot_sequence() {
     printf(YELLOW "=================================\n" RESET);
     printf(CYAN "Press Ctrl+C, ESC, or I key to interrupt reboot\n\n" RESET);
     
-    // Services to stop (shutdown phase)
-    const char* stop_services[] = {
-        "User applications",
-        "Network connections", 
-        "SSH daemon (sshd)",
-        "System logging (rsyslog)",
-        "Cron daemon (crond)",
-        "D-Bus system message bus",
-        "User sessions",
-        "Network interfaces"
-        "Package manager (wsys2)",
-        "Package manager's Sub-shell (wsys2 Sub-Shell)"
-    };
-    
-    // Services to start (startup phase)
-    const char* start_services[] = {
-        "Kernel modules",
-        "Hardware abstraction layer",
-        "Device drivers",
-        "Network interfaces",
-        "D-Bus system message bus",
-        "System logging (rsyslog)",
-        "Cron daemon (crond)",
-        "SSH daemon (sshd)",
-        "NetworkManager",
-        "User session manager",
-        "Package manager (wsys2)",
-        "Package manager's Sub-shell (wsys2 Sub-Shell)"
-    };
-    
-    int stop_count = sizeof(stop_services) / sizeof(stop_services[0]);
-    int start_count = sizeof(start_services) / sizeof(start_services[0]);
-    
     // === SHUTDOWN PHASE ===
     printf(RED "Phase 1: Shutdown Services\n" RESET);
     printf(RED "==========================\n" RESET);
     
-    for (int i = 0; i < stop_count; i++) {
-        // Check for interrupt before each service
-        if (check_reboot_interrupt()) {
-            printf(RED "\n[REBOOT INTERRUPTED DURING SHUTDOWN]\n" RESET);
-            printf(YELLOW "Reboot sequence cancelled by user!\n" RESET);
-            return -1; // Return -1 to indicate interruption
-        }
-        
-        reboot_stop_service(stop_services[i]);
-        
-        // Additional interrupt check after each service
-        if (check_reboot_interrupt()) {
-            printf(RED "\n[REBOOT INTERRUPTED DURING SHUTDOWN]\n" RESET);
-            printf(YELLOW "Reboot sequence cancelled by user!\n" RESET);
-            return -1;
-        }
+    poweroff_sequence(); // Call poweroff sequence to simulate shutdown process
+    system("cls");
+    while (time(NULL) - start < duration) {
+      printf("");
     }
-    
-    printf(MAGENTA "\n[ " CYAN "%llu" MAGENTA " ] " RESET "All services stopped successfully\n", 
-           get_unix_epoch_seconds_reboot());
-    
-    // === RESTART PHASE ===
-    printf(YELLOW "\n[ " CYAN "%llu" YELLOW " ] " RESET "System restarting...\n", 
-           get_unix_epoch_seconds_reboot());
-    
-    Sleep(1000); // Brief pause for restart
     
     // Check for interrupt during restart pause
     if (check_reboot_interrupt()) {
@@ -228,16 +177,7 @@ int reboot_sequence() {
     printf(GREEN "==========================\n" RESET);
     
     boot_sequence(); // Call boot sequence to simulate boot process
-    
-    printf(GREEN "\n[ " CYAN "%llu" GREEN " ] " RESET "All services started successfully\n", 
-           get_unix_epoch_seconds_reboot());
-    
-    printf(BOLD GREEN "[ " CYAN "%llu" GREEN " ] " RESET "System reboot completed successfully!\n", 
-           get_unix_epoch_seconds_reboot());
-    
-    printf(CYAN "\nWNU OS has been restarted.\n" RESET);
-    printf(WHITE "Welcome back to WNU OS!\n" RESET);
-    
+    system("cls");
     return 0; // Return 0 for successful reboot completion
 }
 

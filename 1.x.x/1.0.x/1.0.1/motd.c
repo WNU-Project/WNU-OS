@@ -36,7 +36,7 @@ void motd() {
     }
     else if (month == 11 && day == 26) {
         printf("\n\033[1;33mHappy Birthday, Coolis1362!\033[0m\n");
-        printf("Wishing you a great year ahead.\n\n");
+        printf("Thank For Coolis1362 For Making The WNU Project\n\n");
     }
     else {
         printf("\n\033[1;36mWelcome to WNU OS 1.0.1 Update 2!\033[0m\n");
