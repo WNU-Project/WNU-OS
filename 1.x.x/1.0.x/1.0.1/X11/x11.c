@@ -200,7 +200,6 @@ int x11(void) {
             Vector2 mouse = GetMousePosition();
             showContextMenu = 1;
             contextMenuPos = mouse;
-            printf("[DEBUG] Context menu triggered at (%d, %d)\n", (int)mouse.x, (int)mouse.y); fflush(stdout);
         }
         // Handle left-click on context menu
         if (showContextMenu && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
@@ -209,8 +208,12 @@ int x11(void) {
             int menuY = (int)contextMenuPos.y;
             int menuW = 180, menuH = 32;
             Rectangle aboutRect = {menuX, menuY, menuW, menuH};
+            Rectangle exitRect  = {menuX, menuY + menuH, menuW, menuH};
             if (CheckCollisionPointRec(mouse, aboutRect)) {
                 printf("About X11 Desktop: WNU OS X11 GUI\n"); fflush(stdout);
+            } else if (CheckCollisionPointRec(mouse, exitRect)) {
+                printf("[X11] Exiting X11 Desktop...\n"); fflush(stdout);
+                running = 0;
             }
             showContextMenu = 0;
         }
@@ -378,18 +381,22 @@ int x11(void) {
             int menuX = (int)contextMenuPos.x;
             int menuY = (int)contextMenuPos.y;
             int menuW = 180, menuH = 32;
-            Rectangle aboutRect = {menuX, menuY, menuW, menuH};
             Color menuBg = (Color){60, 60, 70, 255};
             Color menuBorder = (Color){80, 80, 120, 255};
             Color menuHighlight = (Color){40, 60, 180, 255};
             Vector2 mouse = GetMousePosition();
-            int hover = CheckCollisionPointRec(mouse, aboutRect);
-            DrawRectangleRec(aboutRect, hover ? menuHighlight : menuBg);
+            Rectangle aboutRect = {menuX, menuY, menuW, menuH};
+            Rectangle exitRect  = {menuX, menuY + menuH, menuW, menuH};
+            int hoverAbout = CheckCollisionPointRec(mouse, aboutRect);
+            int hoverExit  = CheckCollisionPointRec(mouse, exitRect);
+            // Draw About item
+            DrawRectangleRec(aboutRect, hoverAbout ? menuHighlight : menuBg);
             DrawRectangleLines(menuX, menuY, menuW, menuH, menuBorder);
             DrawText("About X11 Desktop", menuX + 12, menuY + 7, 18, x11_white);
-            DrawRectangleRec(aboutRect, hover ? menuHighlight : menuBg);
-            DrawRectangleLines(menuX, menuY, menuW, menuH, menuBorder);
-            DrawText("Exit X11S", menuX + 12, menuY + 7, 18, x11_white);
+            // Draw Exit item
+            DrawRectangleRec(exitRect, hoverExit ? menuHighlight : menuBg);
+            DrawRectangleLines(menuX, menuY + menuH, menuW, menuH, menuBorder);
+            DrawText("Exit X11", menuX + 12, menuY + menuH + 7, 18, x11_white);
         }
 
         // Terminal window
