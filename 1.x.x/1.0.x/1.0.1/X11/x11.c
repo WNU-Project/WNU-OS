@@ -1,12 +1,12 @@
 #ifndef NO_RAYLIB
+// Always include raylib.h before windows.h to avoid symbol conflicts
 #include <stdio.h>
 #include <string.h>
 #include "raylib.h"
 #include "x11.h"
 #include "x11_logo.h"
-#include <string.h>
-#include "raylib.h"
-#include "x11_logo.h"
+
+// Only include <windows.h> in the process code section below, not globally
     // ...existing code...
 
 // --- Terminal buffer and shell process definitions ---
@@ -36,6 +36,7 @@ typedef unsigned long DWORD;
 
 
 // --- Windows process code for GUI build ---
+
 #if defined(_WIN32) && !defined(NO_RAYLIB)
 
 #define WIN32_LEAN_AND_MEAN
@@ -43,9 +44,14 @@ typedef unsigned long DWORD;
 #define NOUSER
 #define NOMINMAX
 #include <windows.h>
+// Undefine Windows symbols that conflict with raylib
+#undef Rectangle
+#undef CloseWindow
 #undef DrawText
 #undef DrawTextEx
-#undef CloseWindow
+#undef LoadImage
+#undef PlaySound
+#undef ShowCursor
 #undef Color
 #undef Vector2
 
@@ -131,9 +137,29 @@ void CloseShell(ChildProc* proc) {
 #define NOMINMAX
 
 int x11(void) {
+    char currentos_buf[128] = {0};
+    OSVERSIONINFOA osvi = {0};
+    osvi.dwOSVersionInfoSize = sizeof(osvi);
+    // Only include windows.h for this block
+    #if defined(_WIN32)
+    #include <windows.h>
+    #undef Rectangle
+    #endif
+    if (GetVersionExA(&osvi)) {
+        snprintf(currentos_buf, sizeof(currentos_buf), "Windows %lu.%lu.%lu", osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber);
+    } else {
+        strncpy(currentos_buf, "Unknown OS", sizeof(currentos_buf) - 1);
+        currentos_buf[sizeof(currentos_buf) - 1] = '\0';
+    }
+    char* currentos = currentos_buf;
     printf("X.Org X Server 1.21.1.7\n");
     printf("X Protocol Version 11, Revision 0\n");
-    printf("Build Operating System:: Windows 11 Build 26200\n");
+    printf("Build Operating System:: Windows 10.0.26200\n");
+    printf("Current Operating System:: %s\n", currentos);
+    printf("Markers: (--) probed, (**) from config file, (==) default setting,\n");
+    printf("\t(++) from command line, (!!) notice, (II/INFO) informational,\n");
+    printf("\t(WW) warning, (EE) error\n");
+    printf("(II) Starting Raylib X11 Desktop Environment...\n");
     int screenWidth  = 1024;
     int screenHeight = 768;
     // Context menu state (must be after raylib include)

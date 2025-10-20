@@ -4,15 +4,11 @@ CFLAGS = -Wall -Wextra -std=c11 -Iwsys2 -D_CRT_SECURE_NO_WARNINGS
 
 # Output executable names
 SHELL_TARGET = wnuos.exe
-GUI_TARGET   = x11.exe
 
 # Source files
 SHELL_SRCS = main.c boot.c userlogin.c poweroff.c halt.c reboot.c \
 			 wsys2/wsys2.c wsys2/package.c tty_session.c motd.c X11/x11.c
 SHELL_OBJS = $(SHELL_SRCS:.c=.o)
-
-GUI_SRCS = X11/main.c X11/x11.c
-GUI_OBJS = $(GUI_SRCS:.c=.o)
 
 # Libraries
 SHELL_LIBS = -LX11 -lraylib -lgdi32 -luser32 -ladvapi32 -lnetapi32 -lkernel32 -lwininet -lws2_32 -lwinmm
@@ -26,13 +22,6 @@ $(SHELL_TARGET): $(SHELL_OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ \
 	-Wl,--start-group $(SHELL_LIBS) -Wl,--end-group \
 	-Wl,-subsystem,console
-
-# Build GUI (window app, links raylib)
-$(GUI_TARGET): $(GUI_OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ \
-	-Wl,--start-group $(GUI_LIBS) -Wl,--end-group \
-	-Wl,-subsystem,windows
-
 # Compile .c to .o
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
