@@ -250,9 +250,9 @@ int x11(void) {
                     inputLine[0] = '\0';
                 }
             } else if (CheckCollisionPointRec(mouse, aboutRect)) {
-                printf("About X11 Desktop: WNU OS X11 GUI Made In: C With Raylib\n"); fflush(stdout);
+                printf("About X11 Desktop: WNU OS 1.0.1 Update 2 X11 GUI Made In: C With Raylib\n"); fflush(stdout);
             } else if (CheckCollisionPointRec(mouse, exitRect)) {
-                printf("[X11] Exiting X11 Desktop...\n"); fflush(stdout);
+                printf("waiting for X server to shut down...\n"); fflush(stdout);    
                 running = 0;
             }
             showContextMenu = 0;
@@ -507,7 +507,7 @@ int x11(void) {
     // Cleanup
     CloseShell(&shell);
     UnloadTexture(logo);
-
+        printf("waiting for X server to shut down...\n"); fflush(stdout); 
         ((void (*)(void))CloseWindow)();
         return 0;
 }
