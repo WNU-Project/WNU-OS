@@ -55,7 +55,7 @@ Section "WNU OS Core" SEC01
   SectionIn RO
   SetOutPath "$INSTDIR"
   SetOverwrite ifnewer
-  File "..\wnuos.exe"
+  File "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.1\wnuos.exe"
   CreateDirectory "$SMPROGRAMS\WNU OS"
   CreateShortCut "$SMPROGRAMS\WNU OS\WNU OS.lnk" "$INSTDIR\wnuos.exe"
   CreateShortCut "$DESKTOP\WNU OS.lnk" "$INSTDIR\wnuos.exe"
@@ -143,6 +143,16 @@ Section Uninstall
   Delete "$INSTDIR\boot.h"
   Delete "$INSTDIR\userlogin.h"
   Delete "$INSTDIR\poweroff.h"
+  Delete "$INSTDIR\reboot.h"
+  Delete "$INSTDIR\halt.h"
+  Delete "$INSTDIR\main.c"
+  Delete "$INSTDIR\boot.c"
+  Delete "$INSTDIR\userlogin.c"
+  Delete "$INSTDIR\poweroff.c"
+  Delete "$INSTDIR\reboot.c"
+  Delete "$INSTDIR\halt.c"
+  Delete "$INSTDIR\Makefile"
+  Delete "$INSTDIR\build.bat"
 
   Delete "$SMPROGRAMS\WNU OS\Uninstall.lnk"
   Delete "$SMPROGRAMS\WNU OS\Website.lnk"

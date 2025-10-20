@@ -131,6 +131,9 @@ void CloseShell(ChildProc* proc) {
 #define NOMINMAX
 
 int x11(void) {
+    printf("X.Org X Server 1.21.1.7\n");
+    printf("X Protocol Version 11, Revision 0\n");
+    printf("Build Operating System:: Windows 10.0.19045\n");
     int screenWidth  = 1024;
     int screenHeight = 768;
     // Context menu state (must be after raylib include)
