@@ -12,7 +12,6 @@ SHELL_OBJS = $(SHELL_SRCS:.c=.o)
 
 # Libraries
 SHELL_LIBS = -LX11 -lraylib -lgdi32 -luser32 -ladvapi32 -lnetapi32 -lkernel32 -lwininet -lws2_32 -lwinmm
-GUI_LIBS   = -LX11 -lraylib -lgdi32 -luser32 -ladvapi32 -lnetapi32 -lkernel32 -lwininet -lws2_32 -lwinmm
 
 # Default build
 all: $(SHELL_TARGET) $(GUI_TARGET)
@@ -29,7 +28,6 @@ $(SHELL_TARGET): $(SHELL_OBJS)
 # Clean build artifacts
 clean:
 	@echo Cleaning build artifacts...
-	-@rm -f $(SHELL_OBJS) $(GUI_OBJS) $(SHELL_TARGET) $(GUI_TARGET) 2>/dev/null || true
-	-@cmd /C "del /Q $(SHELL_OBJS) $(GUI_OBJS) $(SHELL_TARGET) $(GUI_TARGET) 2>nul" 2>nul || true
+	-@del /Q $(SHELL_OBJS) $(SHELL_TARGET) 2>nul
 
 .PHONY: all clean

@@ -93,6 +93,14 @@ Section "WSYS2 Stand-alone Package Manager (Source Code)" SEC04
   File "..\wsys2\wsys2.h"
 SectionEnd
 
+Section "X11 GUI Source Code" SEC05
+  SetOutPath "$INSTDIR\src\x11"
+  File "..\X11\main.c"
+  File "..\X11\x11.c"
+  File "..\X11\Makefile"
+
+SectionEnd
+
 Section -AdditionalIcons
   WriteIniStr "$INSTDIR\${PRODUCT_NAME}.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
   CreateShortCut "$SMPROGRAMS\WNU OS\Website.lnk" "$INSTDIR\${PRODUCT_NAME}.url"

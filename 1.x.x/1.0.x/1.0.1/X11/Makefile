@@ -21,6 +21,6 @@ $(TARGET): $(OBJS)
 
 # Clean build artifacts
 clean:
-	del /Q $(OBJS) $(TARGET) 2>nul || rm -f $(OBJS) $(TARGET)
+	del .\*.o
 
 .PHONY: all clean
