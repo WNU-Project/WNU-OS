@@ -218,6 +218,21 @@ int x11(void) {
     int xclock_close_hover = 0;
     int utilities_close_hover = 0;
 
+    /* FVWM-like extra state */
+    int focus_follows_mouse = 0; /* toggleable */
+    int focused_window = -1;     /* WIN_* id currently focused for keyboard ops */
+    /* resize state per-window */
+    int term_resizing = 0;
+    int xclock_resizing = 0;
+    int utilities_resizing = 0;
+    /* minimized/iconified flags */
+    int xclock_minimized = 0;
+    int utilities_minimized = 0;
+    /* sticky windows (appear on all workspaces) */
+    int term_sticky = 0;
+    int xclock_sticky = 0;
+    int utilities_sticky = 0;
+
     // Terminal content buffer
     char  lines[TERM_MAX_LINES][TERM_MAX_COLUMNS];
     int   lineCount = 0;
@@ -273,6 +288,30 @@ int x11(void) {
             debug_window_should_close = 1;
             running = 0;
         }
+        // Global mouse position for focus-follows-mouse and interactions
+        Vector2 globalMouse = GetMousePosition();
+
+        // Toggle focus-follows-mouse with Ctrl+F
+        if (IsKeyPressed(KEY_F) && (IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL))) {
+            focus_follows_mouse = !focus_follows_mouse;
+        }
+
+        // If focus-follows-mouse is enabled, set focused_window under pointer
+        if (focus_follows_mouse) {
+            focused_window = -1;
+            if (terminal_open && !terminal_minimized && (term_workspace == workspace || term_sticky)) {
+                if (CheckCollisionPointRec(globalMouse, termWin)) focused_window = WIN_TERM;
+            }
+            if (focused_window == -1 && xclock_open && !xclock_minimized && (xclock_workspace == workspace || xclock_sticky)) {
+                Rectangle xr = (Rectangle){ xclockWin.x, xclockWin.y, xclockWin.width, xclockWin.height };
+                if (CheckCollisionPointRec(globalMouse, xr)) focused_window = WIN_XCLOCK;
+            }
+            if (focused_window == -1 && utilities_open && !utilities_minimized && (utilities_workspace == workspace || utilities_sticky)) {
+                Rectangle ur = (Rectangle){ utilitiesWin.x, utilitiesWin.y, utilitiesWin.width, utilitiesWin.height };
+                if (CheckCollisionPointRec(globalMouse, ur)) focused_window = WIN_UTILS;
+            }
+        }
+
         // Handle right-click anywhere (for easier testing)
         if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
             Vector2 mouse = GetMousePosition();
@@ -329,6 +368,7 @@ int x11(void) {
                 if (terminal_minimized) {
                     // Restore window without restarting shell
                     terminal_minimized = 0;
+                    focused_window = WIN_TERM; last_clicked = WIN_TERM;
                 } else {
                     // Only open terminal, never close window
                     terminal_open = 1;
@@ -338,6 +378,26 @@ int x11(void) {
                     lineCount = 0;
                     inputLen = 0;
                     inputLine[0] = '\0';
+                }
+            }
+        }
+
+        // Handle clicks on additional minimized icons (xclock/utilities) placed next to terminal icon
+        {
+            int minIconX = icon_x + icon_w + 24;
+            int minIconY = icon_y;
+            int minIconW = (int)(xclocklogo.width * iconScale);
+            int minIconH = (int)(xclocklogo.height * iconScale);
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                Vector2 mm = GetMousePosition();
+                if (xclock_minimized) {
+                    Rectangle r = { (float)minIconX, (float)minIconY, (float)minIconW, (float)minIconH };
+                    if (CheckCollisionPointRec(mm, r)) { xclock_minimized = 0; xclock_open = 1; xclock_workspace = workspace; focused_window = WIN_XCLOCK; last_clicked = WIN_XCLOCK; }
+                    minIconX += minIconW + 12;
+                }
+                if (utilities_minimized) {
+                    Rectangle r2 = { (float)minIconX, (float)minIconY, (float)minIconW, (float)minIconH };
+                    if (CheckCollisionPointRec(mm, r2)) { utilities_minimized = 0; utilities_open = 1; utilities_workspace = workspace; focused_window = WIN_UTILS; last_clicked = WIN_UTILS; }
                 }
             }
         }
@@ -359,20 +419,36 @@ int x11(void) {
                     terminal_open = 0;
                     CloseShell(&shell);
                     if (last_clicked == WIN_TERM) last_clicked = -1;
+                    if (focused_window == WIN_TERM) focused_window = -1;
                 } else if (CheckCollisionPointRec(m, minBtn)) {
                     // Minimize (hide) terminal but keep shell running
                     terminal_minimized = 1;
+                    // represent as an iconified desktop icon (terminal uses existing behavior)
                 } else if (CheckCollisionPointRec(m, titleBar)) {
                     dragging = 1;
                     dragOffset.x = m.x - termWin.x;
                     dragOffset.y = m.y - termWin.y;
                     last_clicked = WIN_TERM;
+                    focused_window = WIN_TERM;
+                } else {
+                    // Check for resize handle (bottom-right corner)
+                    Rectangle resizeHandle = { termWin.x + termWin.width - 18, termWin.y + termWin.height - 18, 18, 18 };
+                    if (CheckCollisionPointRec(m, resizeHandle)) {
+                        term_resizing = 1; last_clicked = WIN_TERM; focused_window = WIN_TERM;
+                    }
                 }
             }
             if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) dragging = 0;
+            if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) term_resizing = 0;
             if (dragging) {
                 termWin.x = m.x - dragOffset.x;
                 termWin.y = m.y - dragOffset.y;
+            }
+            if (term_resizing) {
+                Vector2 rm = GetMousePosition();
+                float newW = rm.x - termWin.x; if (newW < 160) newW = 160; if (newW > screenWidth - termWin.x) newW = screenWidth - termWin.x - 8;
+                float newH = rm.y - termWin.y; if (newH < 120) newH = 120; if (newH > screenHeight - termWin.y) newH = screenHeight - termWin.y - 8;
+                termWin.width = newW; termWin.height = newH;
             }
         }
 
@@ -508,6 +584,23 @@ int x11(void) {
         if (IsKeyPressed(key)) workspace = k;
     }
 
+    // Alt+Number: move focused window to workspace k
+    for (int k = 1; k <= workspaceCount; k++) {
+        int key = KEY_ONE + (k-1);
+        if ((IsKeyPressed(key)) && (IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT))) {
+            if (focused_window == WIN_TERM) { term_workspace = k; }
+            else if (focused_window == WIN_XCLOCK) { xclock_workspace = k; }
+            else if (focused_window == WIN_UTILS) { utilities_workspace = k; }
+        }
+    }
+
+    // Ctrl+S toggles sticky flag for focused window (appears on all workspaces)
+    if (IsKeyPressed(KEY_S) && (IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL))) {
+        if (focused_window == WIN_TERM) term_sticky = !term_sticky;
+        else if (focused_window == WIN_XCLOCK) xclock_sticky = !xclock_sticky;
+        else if (focused_window == WIN_UTILS) utilities_sticky = !utilities_sticky;
+    }
+
     // Clock (right, dynamic sizing)
     time_t now = time(NULL);
     struct tm* t = localtime(&now);
@@ -556,8 +649,8 @@ int x11(void) {
     DrawTextureEx(xtermlogo, (Vector2){(float)icon_x, (float)icon_y}, 0.0f, iconScale, x11_white);
     DrawTextEx(guiFont, "xterm", (Vector2){(float)icon_x, (float)(icon_y + icon_h + 8)}, 18.0f, 0.0f, x11_title);
 
-    // Draw xclock window if open AND on current workspace
-    if (xclock_open && xclock_workspace == workspace) {
+    // Draw xclock window if open AND on current workspace (and not minimized)
+    if (xclock_open && !xclock_minimized && (xclock_workspace == workspace || xclock_sticky)) {
         // Window background and border
         int xb = (int)(screenWidth * 0.002f);
         DrawRectangle((int)xclockWin.x, (int)xclockWin.y, (int)xclockWin.width, (int)xclockWin.height, (Color){80,80,120,255});
@@ -594,6 +687,18 @@ int x11(void) {
             xclockWin.x = _m.x - xclockDragOffset.x;
             xclockWin.y = _m.y - xclockDragOffset.y;
         }
+        // resize handle for xclock
+        Rectangle xResize = { xclockWin.x + xclockWin.width - 18, xclockWin.y + xclockWin.height - 18, 18, 18 };
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            if (CheckCollisionPointRec(GetMousePosition(), xResize)) { xclock_resizing = 1; last_clicked = WIN_XCLOCK; focused_window = WIN_XCLOCK; }
+        }
+        if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) xclock_resizing = 0;
+        if (xclock_resizing) {
+            Vector2 rm = GetMousePosition();
+            float newW = rm.x - xclockWin.x; if (newW < 80) newW = 80; if (newW > screenWidth - xclockWin.x) newW = screenWidth - xclockWin.x - 8;
+            float newH = rm.y - xclockWin.y; if (newH < 80) newH = 80; if (newH > screenHeight - xclockWin.y) newH = screenHeight - xclockWin.y - 8;
+            xclockWin.width = newW; xclockWin.height = newH;
+        }
 
         // Draw analog clock face centered in the client area
         float cx = xclockWin.x + xclockWin.width/2.0f;
@@ -614,9 +719,16 @@ int x11(void) {
         DrawLine((int)cx, (int)cy, (int)(cx + cosf(angMin)*(radius*0.75f)), (int)(cy + sinf(angMin)*(radius*0.75f)), (Color){200,200,200,255});
         DrawLine((int)cx, (int)cy, (int)(cx + cosf(angSec)*(radius*0.9f)), (int)(cy + sinf(angSec)*(radius*0.9f)), (Color){255,0,0,255});
     }
+    // Draw xclock minimized icon if iconified
+    if (xclock_minimized) {
+        int minIconX = icon_x + icon_w + 24;
+        int minIconY = icon_y;
+        DrawTextureEx(xclocklogo, (Vector2){(float)minIconX, (float)minIconY}, 0.0f, iconScale, x11_white);
+        DrawTextEx(guiFont, "xclock", (Vector2){(float)minIconX, (float)(minIconY + (int)(xclocklogo.height*iconScale) + 4)}, 14.0f, 0.0f, x11_title);
+    }
 
-    // Draw Utilities window if open AND on current workspace
-    if (utilities_open && utilities_workspace == workspace) {
+    // Draw Utilities window if open AND on current workspace (and not minimized)
+    if (utilities_open && !utilities_minimized && (utilities_workspace == workspace || utilities_sticky)) {
         int ub = (int)(screenWidth * 0.002f);
         DrawRectangle((int)utilitiesWin.x, (int)utilitiesWin.y, (int)utilitiesWin.width, (int)utilitiesWin.height, (Color){80,80,120,255});
         DrawRectangle((int)utilitiesWin.x + ub, (int)utilitiesWin.y + ub, (int)utilitiesWin.width - 2*ub, (int)utilitiesWin.height - 2*ub, x11_white);
@@ -798,7 +910,27 @@ int x11(void) {
                 utilitiesWin.x = nm.x - utilitiesDragOffset.x;
                 utilitiesWin.y = nm.y - utilitiesDragOffset.y;
             }
+            // resize handle for utilities
+            Rectangle uResize = { utilitiesWin.x + utilitiesWin.width - 18, utilitiesWin.y + utilitiesWin.height - 18, 18, 18 };
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                if (CheckCollisionPointRec(GetMousePosition(), uResize)) { utilities_resizing = 1; last_clicked = WIN_UTILS; focused_window = WIN_UTILS; }
+            }
+            if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) utilities_resizing = 0;
+            if (utilities_resizing) {
+                Vector2 rm = GetMousePosition();
+                float newW = rm.x - utilitiesWin.x; if (newW < 160) newW = 160; if (newW > screenWidth - utilitiesWin.x) newW = screenWidth - utilitiesWin.x - 8;
+                float newH = rm.y - utilitiesWin.y; if (newH < 120) newH = 120; if (newH > screenHeight - utilitiesWin.y) newH = screenHeight - utilitiesWin.y - 8;
+                utilitiesWin.width = newW; utilitiesWin.height = newH;
+            }
         }
+    }
+    // Draw utilities minimized icon if iconified
+    if (utilities_minimized) {
+        int minIconX = icon_x + icon_w + 24;
+        int minIconY = icon_y;
+        if (xclock_minimized) minIconX += (int)(xclocklogo.width * iconScale) + 12;
+        DrawTextureEx(xtermlogo, (Vector2){(float)minIconX, (float)minIconY}, 0.0f, iconScale, x11_white);
+        DrawTextEx(guiFont, "Utilities", (Vector2){(float)minIconX, (float)(minIconY + (int)(xtermlogo.height*iconScale) + 4)}, 14.0f, 0.0f, x11_title);
     }
 
         // Draw context menu if active
@@ -865,7 +997,7 @@ int x11(void) {
             if (minBtnX < termWin.x + border) minBtnX = (int)(termWin.x + border);
             DrawRectangle(minBtnX, minBtnY, minBtnSz, minBtnSz, (Color){120, 120, 120, 255});
             DrawTextEx(guiFont, "_", (Vector2){(float)(minBtnX + 10), (float)(minBtnY + 4)}, (float)(titleH*0.5f), 0.0f, x11_white);
-            // Terminal contents
+        // Terminal contents
             int y = (int)(termWin.y + titleH + 12);
             int x = (int)(termWin.x + 16);
             int maxY = (int)(termWin.y + termWin.height - 36);
@@ -884,6 +1016,8 @@ int x11(void) {
             DrawTextEx(guiFont, "> ", (Vector2){(float)x, (float)(maxY + 10)}, (float)(promptH*0.7f), 0.0f, x11_white);
             Vector2 promptSz = MeasureTextEx(guiFont, "> ", (float)(promptH*0.7f), 0.0f);
             DrawTextEx(guiFont, inputLine, (Vector2){(float)(x + (int)promptSz.x), (float)(maxY + 10)}, (float)(promptH*0.7f), 0.0f, x11_white);
+            // Draw resize handle for terminal
+            DrawRectangle((int)(termWin.x + termWin.width - 18), (int)(termWin.y + termWin.height - 18), 18, 18, (Color){100,100,120,255});
         }
 
         // Draw the last-clicked window again (minimal, visual-only) so it overlaps others.
