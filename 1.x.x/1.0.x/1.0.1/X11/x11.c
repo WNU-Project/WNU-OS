@@ -1,4 +1,3 @@
-#ifndef NO_RAYLIB
 // Always include raylib.h before windows.h to avoid symbol conflicts
 #include <stdio.h>
 #include <string.h>
@@ -9,6 +8,7 @@
 #include "x11_logo.h"
 #include "xterm_logo.h"
 #include "xclock_logo.h"
+#include "xcalc_logo.h"
 
 // Only include <windows.h> in the process code section below, not globally
     // ...existing code...
@@ -27,8 +27,6 @@ typedef struct {
     void* hOutput;
     int running;
 } ChildProc;
-
-#ifndef NO_RAYLIB  /* GUI build only */
 
 // Minimal Windows type shims for process status
 typedef unsigned long DWORD;
@@ -131,8 +129,122 @@ void CloseShell(ChildProc* proc) {
     proc->running = 0;
 }
 
+#define XC_MAX_LABEL 256
+
+// Reusable xcalc widget: draws the calculator window, handles interactions and minimized icon.
+static void draw_xcalc_widget(Rectangle *xcalcWin, int *xcalc_open, int *xcalc_minimized, int *xcalc_resizing, int *xcalc_close_hover,
+                              int *xcalc_workspace, int *xcalc_sticky, Font guiFont, Texture2D xcalclogo,
+                              int *last_clicked, int WIN_XCALC,
+                              int *focused_window, int workspace, int screenWidth, int screenHeight) {
+    static int xcalc_dragging = 0;
+    static Vector2 xcalcDragOffset = {0};
+    // persistent calculator state
+                                /* Calculator state moved into draw_xcalc_widget() to make it reusable */
+                                static char calc_display[128] = "0";
+                                static double calc_pending = 0.0;
+                                static char calc_op = 0; /* '+','-','*','/' or 0 */
+                                static int calc_entering = 0; /* 1 when user typing a number */
+                                static int calc_error = 0;
+
+    if (!xcalcWin || !xcalc_open) return;
+
+    int xb = (int)(screenWidth * 0.002f);
+    int xTitleH = 28;
+
+    if (*xcalc_open && !*xcalc_minimized && (*xcalc_workspace == workspace || *xcalc_sticky)) {
+        DrawRectangle((int)xcalcWin->x, (int)xcalcWin->y, (int)xcalcWin->width, (int)xcalcWin->height, (Color){80,80,120,255});
+        DrawRectangle((int)xcalcWin->x + xb, (int)xcalcWin->y + xb, (int)xcalcWin->width - 2*xb, (int)xcalcWin->height - 2*xb, (Color){255,255,255,255});
+        DrawRectangle((int)xcalcWin->x + xb, (int)xcalcWin->y + xb, (int)xcalcWin->width - 2*xb, xTitleH, (Color){60,60,80,255});
+        DrawTextEx(guiFont, "xcalc", (Vector2){(float)xcalcWin->x + xb + 8, (float)xcalcWin->y + xb + 6}, 14.0f, 0.0f, (Color){255,255,255,255});
+        int xCloseSz = xTitleH - 6;
+        int xCloseX = (int)(xcalcWin->x + xcalcWin->width - xCloseSz - xb - 4);
+        int xCloseY = (int)(xcalcWin->y + xb + 3);
+        *xcalc_close_hover = CheckCollisionPointRec(GetMousePosition(), (Rectangle){(float)xCloseX,(float)xCloseY,(float)xCloseSz,(float)xCloseSz});
+        DrawRectangle(xCloseX, xCloseY, xCloseSz, xCloseSz, *xcalc_close_hover ? RED : (Color){120,120,120,255});
+        DrawTextEx(guiFont, "X", (Vector2){(float)(xCloseX + 4), (float)(xCloseY + 2)}, 14.0f, 0.0f, (Color){255,255,255,255});
+
+        // Calculator UI: display and buttons
+        float clientX = xcalcWin->x + xb + 8;
+        float clientY = xcalcWin->y + xb + xTitleH + 8;
+        float clientW = xcalcWin->width - 2*(xb + 8);
+        float clientH = xcalcWin->height - (xTitleH + 8 + xb + 24);
+        Rectangle disp = { clientX, clientY, clientW, 48 };
+        DrawRectangleRec(disp, (Color){18,18,18,255});
+        DrawRectangleLinesEx(disp, 2, (Color){120,120,160,255});
+        float dispFont = 24.0f;
+        Vector2 dsz = MeasureTextEx(guiFont, calc_display, dispFont, 0.0f);
+        DrawTextEx(guiFont, calc_display, (Vector2){ disp.x + disp.width - dsz.x - 12, disp.y + (disp.height - dsz.y)/2 }, dispFont, 0.0f, (Color){255,255,255,255});
+
+        const char* b_labels[] = { "AC","CE","+/-","%%","7","8","9","/","4","5","6","×s","1","2","3","-","0",".","=","+" };
+        int nbuttons = sizeof(b_labels)/sizeof(b_labels[0]);
+        int cols = 4; int rows = nbuttons / cols; float gap = 8.0f;
+        float btnW = (clientW - (cols-1)*gap) / cols;
+        float btnH = (clientH - disp.height - (rows+1)*gap) / rows;
+        float bx0 = clientX; float by0 = clientY + disp.height + gap;
+
+        Vector2 mouse = GetMousePosition();
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            for (int r = 0; r < rows; r++) {
+                for (int c = 0; c < cols; c++) {
+                    int idx = r*cols + c;
+                    Rectangle br = { bx0 + c*(btnW+gap), by0 + r*(btnH+gap), btnW, btnH };
+                    if (CheckCollisionPointRec(mouse, br)) {
+                        const char* lab = b_labels[idx];
+                        if (strcmp(lab, "AC") == 0) { strcpy(calc_display, "0"); calc_pending = 0.0; calc_op = 0; calc_entering = 0; calc_error = 0; }
+                        else if (strcmp(lab, "CE") == 0) { strcpy(calc_display, "0"); calc_entering = 0; calc_error = 0; }
+                        else if (strcmp(lab, "+/-") == 0) { if (calc_display[0] == '-') memmove(calc_display, calc_display+1, strlen(calc_display)); else if (strcmp(calc_display, "0") != 0) { char tmp[XC_MAX_LABEL]; snprintf(tmp, sizeof(tmp), "-%s", calc_display); strncpy(calc_display, tmp, sizeof(calc_display)-1); } }
+                        else if (strcmp(lab, "+/-") == 0) { if (calc_display[0] == '-') memmove(calc_display, calc_display+1, strlen(calc_display)); else if (strcmp(calc_display, "0") != 0) { char tmp[XC_MAX_LABEL]; /* ensure safe formatting into tmp */ snprintf(tmp, sizeof(tmp) - 1, "-%s", calc_display); tmp[sizeof(tmp)-1] = '\0'; strncpy(calc_display, tmp, sizeof(calc_display)-1); calc_display[sizeof(calc_display)-1] = '\0'; } }
+                        else if (strcmp(lab, "%%") == 0) { double v = atof(calc_display); v = v / 100.0; snprintf(calc_display, sizeof(calc_display), "%g", v); calc_entering = 0; }
+                        else if (strcmp(lab, "=") == 0) { double cur = atof(calc_display); double res = cur; if (calc_op) { if (calc_op == '+') res = calc_pending + cur; else if (calc_op == '-') res = calc_pending - cur; else if (calc_op == '*') res = calc_pending * cur; else if (calc_op == '/') { if (cur == 0.0) { calc_error = 1; strncpy(calc_display, "ERR", sizeof(calc_display)-1); } else res = calc_pending / cur; } if (!calc_error) snprintf(calc_display, sizeof(calc_display), "%g", res); calc_pending = res; calc_op = 0; calc_entering = 0; } }
+                        else if (strchr("+-*/", lab[0]) && lab[1] == '\0') { double cur = atof(calc_display); if (calc_op) { double res = cur; if (calc_op == '+') res = calc_pending + cur; else if (calc_op == '-') res = calc_pending - cur; else if (calc_op == '*') res = calc_pending * cur; else if (calc_op == '/') { if (cur == 0.0) { calc_error = 1; strncpy(calc_display, "ERR", sizeof(calc_display)-1); } else res = calc_pending / cur; } if (!calc_error) snprintf(calc_display, sizeof(calc_display), "%g", res); calc_pending = res; } else { calc_pending = cur; } calc_op = lab[0]; calc_entering = 0; }
+                        else if (strcmp(lab, ".") == 0) { if (!strchr(calc_display, '.')) { if (!calc_entering) { strncpy(calc_display, "0", sizeof(calc_display)-1); calc_entering = 1; } strncat(calc_display, ".", sizeof(calc_display)-strlen(calc_display)-1); } }
+                        else { if (!calc_entering || (strcmp(calc_display, "0") == 0 && strchr("0123456789", lab[0]))) { snprintf(calc_display, sizeof(calc_display), "%s", lab); calc_entering = 1; } else { strncat(calc_display, lab, sizeof(calc_display)-strlen(calc_display)-1); } }
+                    }
+                }
+            }
+        }
+
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < cols; c++) {
+                int idx = r*cols + c;
+                Rectangle br = { bx0 + c*(btnW+gap), by0 + r*(btnH+gap), btnW, btnH };
+                int hov = CheckCollisionPointRec(mouse, br);
+                DrawRectangleRec(br, hov ? (Color){60,80,140,255} : (Color){220,220,230,255});
+                DrawRectangleLinesEx(br, 1, (Color){80,80,100,255});
+                Vector2 lsz = MeasureTextEx(guiFont, b_labels[idx], 18.0f, 0.0f);
+                DrawTextEx(guiFont, b_labels[idx], (Vector2){ br.x + (br.width - lsz.x)/2, br.y + (br.height - lsz.y)/2 }, 18.0f, 0.0f, (Color){30,30,40,255});
+            }
+        }
+
+        // Window interactions (close/drag/resize)
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            Vector2 _m = GetMousePosition();
+            Rectangle titleRect = {(float)xcalcWin->x + xb, (float)xcalcWin->y + xb, (float)xcalcWin->width - 2*xb, (float)xTitleH};
+            if (CheckCollisionPointRec(_m, (Rectangle){(float)xCloseX,(float)xCloseY,(float)xCloseSz,(float)xCloseSz})) {
+                *xcalc_open = 0; if (*last_clicked == WIN_XCALC) *last_clicked = -1;
+            } else if (CheckCollisionPointRec(_m, titleRect)) {
+                xcalc_dragging = 1; xcalcDragOffset.x = _m.x - xcalcWin->x; xcalcDragOffset.y = _m.y - xcalcWin->y; *last_clicked = WIN_XCALC;
+            } else {
+                Rectangle xResize = { xcalcWin->x + xcalcWin->width - 18, xcalcWin->y + xcalcWin->height - 18, 18, 18 };
+                if (CheckCollisionPointRec(_m, xResize)) { *xcalc_resizing = 1; *last_clicked = WIN_XCALC; *focused_window = WIN_XCALC; }
+            }
+        }
+        if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) { xcalc_dragging = 0; *xcalc_resizing = 0; }
+    if (xcalc_dragging && *last_clicked == WIN_XCALC) { Vector2 _m = GetMousePosition(); xcalcWin->x = _m.x - xcalcDragOffset.x; xcalcWin->y = _m.y - xcalcDragOffset.y; }
+        if (*xcalc_resizing) { Vector2 rm = GetMousePosition(); float newW = rm.x - xcalcWin->x; if (newW < 220) newW = 220; if (newW > screenWidth - xcalcWin->x) newW = screenWidth - xcalcWin->x - 8; float newH = rm.y - xcalcWin->y; if (newH < 240) newH = 240; if (newH > screenHeight - xcalcWin->y) newH = screenHeight - xcalcWin->y - 8; xcalcWin->width = newW; xcalcWin->height = newH; }
+    }
+
+    // Minimized icon
+    if (*xcalc_minimized) {
+        int icon_x = 32, icon_y = (int)(48 + 32); // approximate positions used in main
+        int minIconX = icon_x + (int)(32 * 0.18f) + 24;
+        int minIconY = icon_y;
+        DrawTextureEx(xcalclogo, (Vector2){(float)minIconX, (float)minIconY}, 0.0f, 0.18f, (Color){255,255,255,255});
+        DrawTextEx(guiFont, "xcalc", (Vector2){(float)minIconX, (float)(minIconY + (int)(xcalclogo.height*0.18f) + 4)}, 14.0f, 0.0f, (Color){30,30,40,255});
+    }
+}
+
 #endif // _WIN32 && !NO_RAYLIB
-#endif // _WIN32
 
 /* Prevent Windows/Raylib symbol collisions */
 #define WIN32_LEAN_AND_MEAN
@@ -170,6 +282,7 @@ int x11(void) {
     int showContextMenu = 0;
     Vector2 contextMenuPos = {0};
     int contextMenuHover = -1;
+    int contextMenuSetFrame = -1;
     InitWindow(initialScreenWidth, initialScreenHeight, "X11 Desktop (FVWM 3.x)");
     SetWindowState(FLAG_WINDOW_ALWAYS_RUN | FLAG_WINDOW_RESIZABLE);
     SetWindowFocused();
@@ -194,6 +307,8 @@ int x11(void) {
     Texture2D xtermlogo  = LoadTextureFromImage(xtermlgoImage);
     Image xclocklgoImage = LoadImageFromMemory(".png", xclock_png, xclock_png_len);
     Texture2D xclocklogo  = LoadTextureFromImage(xclocklgoImage);
+    Image xcalclgoImage = LoadImageFromMemory(".png", xcalc_png, xcalc_png_len);
+    Texture2D xcalclogo  = LoadTextureFromImage(xcalclgoImage);
     UnloadImage(logoImage);
     UnloadImage(xtermlgoImage);
     // Load GUI font (fall back to a common Windows font)
@@ -206,6 +321,13 @@ int x11(void) {
     int xclock_open = 0;
     Rectangle termWin = {0};
     Rectangle xclockWin = {0};
+    int xcalc_open = 0;
+    Rectangle xcalcWin = {0};
+    int xcalc_minimized = 0;
+    int xcalc_resizing = 0;
+    int xcalc_close_hover = 0;
+    // xcalc_dragging and xcalcDragOffset are now managed inside draw_xcalc_widget
+    /* Calculator state moved into draw_xcalc_widget(); no outer duplicates */
     int utilities_open = 0;
     Rectangle utilitiesWin = {0};
     int dragging = 0;
@@ -243,6 +365,8 @@ int x11(void) {
 
     int running = 1;
     int debug_window_should_close = 0;
+    (void)debug_window_should_close; // intentionally kept for future debug hooks
+    (void)x11_border; // silence unused-variable warning; keep color available for future UI tweaks
     int frameCount = 0;
     int terminal_minimized = 0;
     int workspace = 1, workspaceCount = 4;
@@ -250,13 +374,18 @@ int x11(void) {
     #define WIN_TERM 0
     #define WIN_XCLOCK 1
     #define WIN_UTILS 2
+    #define WIN_XCALC 3
     int last_clicked = -1; /* last clicked window id; drawn on top */
     /* Per-window workspace assignments (FVWM-style virtual desktops) */
     int term_workspace = 1;
     int xclock_workspace = 1;
     int utilities_workspace = 1;
+    int xcalc_workspace = 1;
+    int xcalc_sticky = 0;
     // char lastInput[TERM_MAX_COLUMNS] = {0}; // Unused
+    printf("[X11-debug] Entering main loop\n"); fflush(stdout);
     while (running) {
+        printf("[X11-debug] Top of main loop, frameCount=%d\n", frameCount); fflush(stdout);
         frameCount++;
         int screenWidth = GetScreenWidth();
         int screenHeight = GetScreenHeight();
@@ -284,8 +413,11 @@ int x11(void) {
         int titleH = (int)(termWin.height * 0.07f);
         int closeBtnSz = titleH - 4;
         // Wait a few frames before checking for close to avoid false positive
+        printf("[X11-debug] frameCount=%d, WindowShouldClose()=%d\n", frameCount, WindowShouldClose()); fflush(stdout);
         if (frameCount > 5 && WindowShouldClose()) {
             debug_window_should_close = 1;
+            printf("[X11-debug] WindowShouldClose() returned true - exiting main loop\n"); fflush(stdout);
+            printf("[X11-debug] running = 0 (WindowShouldClose)\n"); fflush(stdout);
             running = 0;
         }
         // Global mouse position for focus-follows-mouse and interactions
@@ -317,10 +449,14 @@ int x11(void) {
             Vector2 mouse = GetMousePosition();
             showContextMenu = 1;
             contextMenuPos = mouse;
+            contextMenuSetFrame = frameCount;
+            printf("[X11-debug] context menu opened frame=%d pos=(%.0f,%.0f)\n", frameCount, mouse.x, mouse.y); fflush(stdout);
         }
-        // Handle left-click on context menu
-        if (showContextMenu && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+    // Handle left-click on context menu (ignore clicks on the same frame the menu was opened)
+    // Use release so holding the button while launching the app won't immediately select an item
+        if (showContextMenu && IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && frameCount > contextMenuSetFrame) {
             Vector2 mouse = GetMousePosition();
+            printf("[X11-debug] context menu click frame=%d pos=(%.0f,%.0f)\n", frameCount, mouse.x, mouse.y); fflush(stdout);
             int menuW = 180, menuH = 32;
             int menuX = (int)contextMenuPos.x;
             int menuY = (int)contextMenuPos.y;
@@ -334,6 +470,7 @@ int x11(void) {
             Rectangle exitRect  = {menuX, menuY + 3*menuH, menuW, menuH};
             if (CheckCollisionPointRec(mouse, xtermRect)) {
                 // Launch terminal if not open
+                printf("[X11-debug] menu: XTerm selected\n"); fflush(stdout);
                 if (!terminal_open) {
                     terminal_open = 1;
                     shell.running = 1;
@@ -344,9 +481,11 @@ int x11(void) {
                     inputLine[0] = '\0';
                 }
             } else if (CheckCollisionPointRec(mouse, aboutRect)) {
+                printf("[X11-debug] menu: About selected\n"); fflush(stdout);
                 printf("About X11 Desktop: WNU OS 1.0.1 Update 2 X11 GUI Made In: C With Raylib\n"); fflush(stdout);
                 printf("About FVWM: Version 3.x.x\n"); fflush(stdout);
             } else if (CheckCollisionPointRec(mouse, utilitiesRect)) {
+                printf("[X11-debug] menu: Utilities selected\n"); fflush(stdout);
                 // Open Utilities window (larger by default so tiles fit)
                 utilities_open = 1;
                 utilities_workspace = workspace; /* show utilities on current workspace */
@@ -355,7 +494,9 @@ int x11(void) {
                 utilitiesWin.x = (screenWidth - utilitiesWin.width) / 2;
                 utilitiesWin.y = (screenHeight - utilitiesWin.height) / 2;
             } else if (CheckCollisionPointRec(mouse, exitRect)) {
+                printf("[X11-debug] context menu Exit selected\n"); fflush(stdout);
                 printf("waiting for X server to shut down...\n"); fflush(stdout);    
+                printf("[X11-debug] running = 0 (context menu Exit)\n"); fflush(stdout);
                 running = 0;
             }
             showContextMenu = 0;
@@ -634,6 +775,8 @@ int x11(void) {
     // FVWM logo (left of menu)
     float logoScaleBar = 0.18f;
     int logoBarW = (int)(logo.width * logoScaleBar);
+    (void)logoBarW; // placeholder, used in some layouts; silence unused warning
+    (void)contextMenuHover; // reserved for future hover state
     int logoBarH = (int)(logo.height * logoScaleBar);
     int logoBarX = menuBtnX + menuBtnW + 8;
     int logoBarY = (topBarH - logoBarH) / 2;
@@ -746,9 +889,9 @@ int x11(void) {
         {
             Vector2 _m2 = GetMousePosition();
             // Try to fit all icons on a single row by computing a uniform scale
-            const char* labels[2] = { "Clear Terminal", "xclock" };
-            Texture2D* icons[2] = { &xtermlogo, &xclocklogo };
-            int nshort = 2;
+                const char* labels[3] = { "Clear Terminal", "xclock", "xcalc" };
+                Texture2D* icons[3] = { &xtermlogo, &xclocklogo, &xcalclogo };
+            int nshort = 3;
             float baseScale = 0.24f; // preferred nice size
             int padding = 12;
             int gap = 20;
@@ -756,8 +899,8 @@ int x11(void) {
             if (availableW < 1) availableW = 1;
 
             // compute max icon width at baseScale
-            int widths[2];
-            int heights[2];
+            int widths[3];
+            int heights[3];
             for (int i = 0; i < nshort; i++) {
                 widths[i] = (int)(icons[i]->width * baseScale);
                 heights[i] = (int)(icons[i]->height * baseScale);
@@ -785,7 +928,7 @@ int x11(void) {
             // If still doesn't fit (very narrow), compute columns instead
             int leftX = (int)(utilitiesWin.x + padding);
             int topY = (int)(utilitiesWin.y + ub + uTitleH + 12);
-            Rectangle rects[2];
+            Rectangle rects[3];
             if (totalNeeded <= availableW) {
                 // left-align the row inside the utilities client area (top-left)
                 int x = leftX;
@@ -894,11 +1037,21 @@ int x11(void) {
                         if (CheckCollisionPointRec(mclick, rects[i])) {
                             if (strcmp(labels[i], "xclock") == 0) {
                                 xclock_open = 1;
+                                xclock_workspace = workspace;
                                 xclockWin.width = 220; xclockWin.height = 220;
                                 xclockWin.x = (screenWidth - xclockWin.width) / 2;
                                 xclockWin.y = (screenHeight - xclockWin.height) / 2;
                             } else if (strcmp(labels[i], "Clear Terminal") == 0) {
                                 lineCount = 0;
+                            } else if (strcmp(labels[i], "xcalc") == 0) {
+                                // Open a simple xcalc window centered on the screen
+                                xcalc_open = 1;
+                                xcalc_workspace = workspace; /* assign to current workspace */
+                                xcalcWin.width = 300;
+                                xcalcWin.height = 300;
+                                xcalcWin.x = (screenWidth - xcalcWin.width) / 2;
+                                xcalcWin.y = topBarH + 64;
+                                printf("[X11-debug] xcalc opened on workspace %d at (%.0f,%.0f)\n", xcalc_workspace, xcalcWin.x, xcalcWin.y); fflush(stdout);
                             }
                         }
                     }
@@ -923,7 +1076,11 @@ int x11(void) {
                 utilitiesWin.width = newW; utilitiesWin.height = newH;
             }
         }
-    }
+    // Draw xcalc (delegated to reusable widget)
+    draw_xcalc_widget(&xcalcWin, &xcalc_open, &xcalc_minimized, &xcalc_resizing, &xcalc_close_hover,
+                      &xcalc_workspace, &xcalc_sticky, guiFont, xcalclogo,
+                      &last_clicked, WIN_XCALC,
+                      &focused_window, workspace, screenWidth, screenHeight);
     // Draw utilities minimized icon if iconified
     if (utilities_minimized) {
         int minIconX = icon_x + icon_w + 24;
@@ -1145,32 +1302,7 @@ int x11(void) {
     CloseShell(&shell);
     UnloadTexture(logo);
     UnloadFont(guiFont);
-        printf("waiting for X server to shut down...\n"); fflush(stdout); 
-        ((void (*)(void))CloseWindow)();
-        return 0;
-}
-
-#else /* NO_RAYLIB build (shell-only) */
-
-#include <windows.h>
-
-typedef struct {
-    HANDLE hProcess;
-    HANDLE hInput;
-    HANDLE hOutput;
-    int running;
-} ChildProc;
-
-// (Implementations for LaunchShell, ReadShellOutput, WriteShellInput, CloseShell go here for shell-only build)
-
-int x11(void) {
-    /* Fallback: launch external GUI if someone calls x11() in shell build */
-
-    int rc = system("cmd /c start \"\" \"C:\\WNU\\WNU OS\\x11.exe\"");
-    (void)rc;
+    printf("waiting for X server to shut down...\n"); fflush(stdout); 
+    ((void (*)(void))CloseWindow)();
     return 0;
-}
-
-
-
-#endif /* NO_RAYLIB */
+}}

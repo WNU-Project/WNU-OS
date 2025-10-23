@@ -1,6 +1,6 @@
 # Compiler and flags
-CC = "C:\msys64\mingw64\bin\gcc.exe"
-CFLAGS = -Wall -Wextra -std=c11 -Iwsys2
+CC = C:/msys64/mingw64/bin/gcc.exe
+CFLAGS = -g -Wall -Wextra -std=c11 -Iwsys2
 
 # Output executable name
 TARGET = x11.exe
@@ -18,9 +18,8 @@ $(TARGET): $(OBJS)
 # Compile .c to .o
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
-
-# Clean build artifacts
+# Clean build artifacts (works in cmd or msys)
+.PHONY: clean
 clean:
-	del .\*.o
-
-.PHONY: all clean
+	del .\\*.o
+.PHONY: all

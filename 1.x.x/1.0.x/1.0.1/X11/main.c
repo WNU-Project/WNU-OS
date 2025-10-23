@@ -7,7 +7,6 @@
 #include <conio.h>   // for _getch function
 #include <time.h>
 
-
 int main() {
 	x11();
 }

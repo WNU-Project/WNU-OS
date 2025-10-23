@@ -22,6 +22,8 @@
 
 // Define the global variable
 int isnormaluser = 0;
+// Global boot target (defined once for whole program)
+char* target = NULL;
 
 // Function to verify PIN using PowerShell Windows authentication
 int verify_windows_hello_pin(const char* username, const char* pin) {
@@ -354,6 +356,17 @@ int main(void) {
         } else {
             printf("Access denied for user: %s\n", username);
             continue;
+        }
+        if (strcmp(target, "Graphical") == 0) {
+            printf("Starting graphical interface...\n");
+            Sleep(1000);
+            x11(); // Start X11 graphical interface
+            system("cls");
+            poweroff_sequence();
+            exit(0);
+        }
+        if (strcmp(target, "Multi-User") == 0) {
+            /* proceed to shell loop (fall-through) */
         }
 
         motd(); // Display message of the day

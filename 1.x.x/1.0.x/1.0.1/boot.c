@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>   // for rand, srand
 #include <time.h>     // for seeding srand
+#include "boot.h"
 
 double get_unix_epoch_seconds() {
     FILETIME ft;
@@ -34,6 +35,19 @@ void start_service(const char* service_name, int delay_ms, int success) {
     } else {
         printf("[\033[2m%.6f\033[0m] Starting %s... [\t\033[31mFAILED\033[0m\t]\n",
                t + (delay_ms / 1000.0), service_name);
+    }
+}
+
+void choose_target() {
+    printf("\nChoose boot target [M]uti-User (Recommended If You Want CLI or running in xterm) or [G]raphical (Recommended If Want To See The X11 GUI without the startx command): \n");
+    int choice = getchar();
+    if (choice == 'G' || choice == 'g') {
+        target = "Graphical";
+    } else if (choice == 'M' || choice == 'm') {
+        target = "Multi-User";
+    } else {
+        printf("Invalid choice. Defaulting to Multi-User Target.\n");
+        target = "Multi-User"; // Default to Multi-User
     }
 }
 
@@ -135,9 +149,10 @@ void boot_sequence() {
     Sleep(200 + (rand() % 100));
     start_service("wsys2 Sub-shell", 150, rand() % 10 != 0 );
     Sleep(200 + (rand() % 100));
-    printf("[\033[2m%.6f\033[0m] Reaching target Multi-User System. [\t\033[33mPENDING\033[0m\t]\n", get_unix_epoch_seconds());
+    choose_target();
+    printf("[\033[2m%.6f\033[0m] Reaching target %s..... [\t\033[33mPENDING\033[0m\t]\n", get_unix_epoch_seconds(), target);
     Sleep(200 + (rand() % 100));
-    printf("[\033[2m%.6f\033[0m] Reached target Multi-User System. [\t\033[32mOK\033[0m\t]\n", get_unix_epoch_seconds());
+    printf("[\033[2m%.6f\033[0m] Reached target %s[\t\033[32mOK\033[0m\t]\n", get_unix_epoch_seconds(), target);
 
     printf("\n");
     printf("Unix Epoch Time since Boot Success: %.6f seconds\n", get_unix_epoch_seconds() - t);

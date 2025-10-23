@@ -4,6 +4,7 @@
 #include <stdlib.h>   // for rand, srand
 #include <time.h>     // for seeding srand
 #include "poweroff.h"
+#include "boot.h"
 
 double get_poweroff_unix_epoch_seconds(void) {
     FILETIME ft;
@@ -102,9 +103,9 @@ int poweroff_sequence(void) {
     stop_service("tty sessions", 150, 1);
     system("rmdir /s /q \"C:\\WNU\\WNU OS\\sessions\"");
 
-    printf("[\033[2m%.6f\033[0m] Reached target shutdown. [\t\033[33mPENDING\033[0m\t]\n", get_poweroff_unix_epoch_seconds());
+    printf("[\033[2m%.6f\033[0m] Reached target %s shutdown. [\t\033[33mPENDING\033[0m\t]\n", get_poweroff_unix_epoch_seconds(), target);
     Sleep(150 + (rand() % 50));
-    printf("[\033[2m%.6f\033[0m] Reached target shutdown. [\t\033[32mOK\033[0m\t]\n", get_poweroff_unix_epoch_seconds());
+    printf("[\033[2m%.6f\033[0m] Reached target %s shutdown. [\t\033[32mOK\033[0m\t]\n", get_poweroff_unix_epoch_seconds(), target);
 
     printf("[\033[2m%.6f\033[0m] Unmounting filesystems... [\t\033[33mPENDING\033[0m\t]\n", get_poweroff_unix_epoch_seconds());
     Sleep(200 + (rand() % 50));
