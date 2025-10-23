@@ -10,6 +10,44 @@
 #include "xclock_logo.h"
 #include "xcalc_logo.h"
 
+/* Minimal GL error helper: if OpenGL headers are not already included, provide a
+    small fallback declaration so we can call glGetError safely. If the real
+    OpenGL headers are present, these guards will be skipped. */
+#ifndef GL_NO_ERROR
+typedef unsigned int GLenum;
+#define GL_NO_ERROR 0
+/* glGetError will be provided by the GL implementation (or raylib includes it).
+    Declare it here if it isn't already declared. */
+extern GLenum glGetError(void);
+#endif
+
+/* glFinish may not be declared depending on headers included by raylib; declare it
+    so we can optionally call it (guarded by an env var) to force GPU sync for
+    diagnostics. */
+extern void glFinish(void);
+
+/* GLFW error callback: declare glfwSetErrorCallback (from the linked GLFW
+    library). We don't include glfw3.h here to avoid conflicting with raylib
+    includes; instead declare the symbol we need. */
+typedef void (*GLFWerrorfun)(int, const char*);
+extern GLFWerrorfun glfwSetErrorCallback(GLFWerrorfun cb);
+
+/* Small GLFW error callback implementation that logs to stdout. */
+static void GLFWErrorCallback(int error, const char* description) {
+     printf("[X11-debug] GLFW error %d: %s\n", error, description ? description : "(null)");
+     fflush(stdout);
+}
+
+/* Log any GL error that occurred since the last call to glGetError().
+    'where' should describe the location (e.g. "EndDrawing"). */
+static void LogGLError(const char *where, int frame) {
+     GLenum err = glGetError();
+     if (err != GL_NO_ERROR) {
+          printf("[X11-debug] GL error at %s frame=%d err=0x%X\n", where, frame, (unsigned int)err);
+          fflush(stdout);
+     }
+}
+
 // Only include <windows.h> in the process code section below, not globally
     // ...existing code...
 
@@ -25,7 +63,13 @@ typedef struct {
     void* hProcess;
     void* hInput;
     void* hOutput;
+    void* hThread; /* reader thread handle (opaque) */
     int running;
+    /* pointer to CRITICAL_SECTION allocated after windows.h is available */
+    void* cs;
+    char outbuf[READ_CHUNK_SIZE * 8];
+    int out_head; /* write pos */
+    int out_tail; /* read pos */
 } ChildProc;
 
 // Minimal Windows type shims for process status
@@ -38,8 +82,6 @@ typedef unsigned long DWORD;
 
 
 // --- Windows process code for GUI build ---
-
-#if defined(_WIN32) && !defined(NO_RAYLIB)
 
 #define WIN32_LEAN_AND_MEAN
 #define NOGDI
@@ -56,6 +98,9 @@ typedef unsigned long DWORD;
 #undef ShowCursor
 #undef Color
 #undef Vector2
+
+/* forward-declare thread function so it can be referenced before its definition */
+static DWORD WINAPI ShellReaderThread(LPVOID arg);
 
 int LaunchShell(ChildProc* proc, const char* cmd) {
     HANDLE hChildStdinRd = NULL, hChildStdinWr = NULL;
@@ -93,40 +138,104 @@ int LaunchShell(ChildProc* proc, const char* cmd) {
     proc->hInput   = hChildStdinWr;
     proc->hOutput  = hChildStdoutRd;
     proc->running  = 1;
+    proc->out_head = proc->out_tail = 0;
+    if (proc->cs) InitializeCriticalSection((CRITICAL_SECTION*)proc->cs);
+    proc->hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)NULL, NULL, 0, NULL); /* placeholder, create real thread below */
     CloseHandle(pi.hThread);
+    /* Create a dedicated reader thread that continuously pulls from hOutput into the ring buffer */
+    DWORD tid;
+    proc->hThread = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ShellReaderThread, proc, 0, &tid);
     return 1;
 }
 
-int ReadShellOutput(ChildProc* proc, char* buf, int buflen) {
-    if (!proc || !proc->hOutput) return 0;
-    DWORD bytesRead = 0;
-    if (!PeekNamedPipe((HANDLE)proc->hOutput, NULL, 0, NULL, &bytesRead, NULL)) return 0;
-    if (bytesRead == 0) return 0;
-    if (ReadFile((HANDLE)proc->hOutput, buf, buflen, &bytesRead, NULL)) {
-        return (int)bytesRead;
+/* Thread function: continuously read from child stdout and push into ring buffer */
+static DWORD WINAPI ShellReaderThread(LPVOID arg) {
+    ChildProc* p = (ChildProc*)arg;
+    char tmp[READ_CHUNK_SIZE];
+    DWORD got = 0;
+    while (p && p->running) {
+        if (p->hOutput && PeekNamedPipe((HANDLE)p->hOutput, NULL, 0, NULL, &got, NULL) && got > 0) {
+            if (ReadFile((HANDLE)p->hOutput, tmp, (DWORD)sizeof(tmp), &got, NULL) && got > 0) {
+                if (p->cs) EnterCriticalSection((CRITICAL_SECTION*)p->cs);
+                for (DWORD i = 0; i < got; i++) {
+                    p->outbuf[p->out_head] = tmp[i];
+                    p->out_head = (p->out_head + 1) % (int)(sizeof(p->outbuf));
+                    if (p->out_head == p->out_tail) { /* overflow, drop oldest */ p->out_tail = (p->out_tail + 1) % (int)(sizeof(p->outbuf)); }
+                }
+                if (p->cs) LeaveCriticalSection((CRITICAL_SECTION*)p->cs);
+            }
+        }
+        Sleep(2);
     }
     return 0;
+}
+
+/* Helper thread to perform a non-blocking write to the child stdin and free args */
+typedef struct { HANDLE h; char* data; int len; } WriteArgs;
+static DWORD WINAPI ShellWriteThread(LPVOID a) {
+    WriteArgs* w = (WriteArgs*)a;
+    if (w) {
+        DWORD written = 0;
+        if (w->h) WriteFile(w->h, w->data, (DWORD)w->len, &written, NULL);
+        if (w->data) free(w->data);
+        free(w);
+    }
+    return 0;
+}
+
+int ReadShellOutput(ChildProc* proc, char* buf, int buflen) {
+    if (!proc) return 0;
+    if (proc->cs) EnterCriticalSection((CRITICAL_SECTION*)proc->cs);
+    int avail = (proc->out_head - proc->out_tail + (int)sizeof(proc->outbuf)) % (int)sizeof(proc->outbuf);
+    if (avail == 0) { if (proc->cs) LeaveCriticalSection((CRITICAL_SECTION*)proc->cs); return 0; }
+    int tocopy = (avail < buflen) ? avail : buflen;
+    for (int i = 0; i < tocopy; i++) {
+        buf[i] = proc->outbuf[proc->out_tail];
+        proc->out_tail = (proc->out_tail + 1) % (int)sizeof(proc->outbuf);
+    }
+    if (proc->cs) LeaveCriticalSection((CRITICAL_SECTION*)proc->cs);
+    return tocopy;
 }
 
 int WriteShellInput(ChildProc* proc, const char* buf, int buflen) {
     if (!proc || !proc->hInput) return 0;
     DWORD bytesWritten = 0;
-    if (WriteFile((HANDLE)proc->hInput, buf, buflen, &bytesWritten, NULL)) {
-        return (int)bytesWritten;
-    }
-    return 0;
+    /* Perform write on a background thread to avoid blocking the main/UI thread */
+    typedef struct { HANDLE h; char* data; int len; } WriteArgs;
+    WriteArgs* wa = (WriteArgs*)malloc(sizeof(WriteArgs));
+    if (!wa) return 0;
+    wa->h = (HANDLE)proc->hInput;
+    wa->len = buflen;
+    wa->data = (char*)malloc(wa->len);
+    if (!wa->data) { free(wa); return 0; }
+    memcpy(wa->data, buf, wa->len);
+    /* spawn helper thread (ShellWriteThread implemented separately) */
+    HANDLE h = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)ShellWriteThread, wa, 0, NULL);
+    if (h) CloseHandle(h); /* detach */
+    /* optimistic return: assume bytes queued */
+    return buflen;
 }
 
 void CloseShell(ChildProc* proc) {
     if (!proc) return;
-    if (proc->hInput)  { CloseHandle((HANDLE)proc->hInput);  proc->hInput = NULL; }
-    if (proc->hOutput) { CloseHandle((HANDLE)proc->hOutput); proc->hOutput = NULL; }
+    proc->running = 0;
+    if (proc->hThread) {
+        /* don't block the main/UI thread waiting for the reader thread; poll with zero timeout */
+        WaitForSingleObject((HANDLE)proc->hThread, 0);
+        CloseHandle((HANDLE)proc->hThread); proc->hThread = NULL;
+    }
+    if (proc->hInput)  { CloseHandle(proc->hInput);  proc->hInput = NULL; }
+    if (proc->hOutput) { CloseHandle(proc->hOutput); proc->hOutput = NULL; }
     if (proc->hProcess) {
         TerminateProcess((HANDLE)proc->hProcess, 0);
         CloseHandle((HANDLE)proc->hProcess);
         proc->hProcess = NULL;
     }
-    proc->running = 0;
+    if (proc->cs) {
+        DeleteCriticalSection((CRITICAL_SECTION*)proc->cs);
+        free(proc->cs);
+        proc->cs = NULL;
+    }
 }
 
 #define XC_MAX_LABEL 256
@@ -244,8 +353,6 @@ static void draw_xcalc_widget(Rectangle *xcalcWin, int *xcalc_open, int *xcalc_m
     }
 }
 
-#endif // _WIN32 && !NO_RAYLIB
-
 /* Prevent Windows/Raylib symbol collisions */
 #define WIN32_LEAN_AND_MEAN
 #define NOGDI
@@ -286,7 +393,10 @@ int x11(void) {
     InitWindow(initialScreenWidth, initialScreenHeight, "X11 Desktop (FVWM 3.x)");
     SetWindowState(FLAG_WINDOW_ALWAYS_RUN | FLAG_WINDOW_RESIZABLE);
     SetWindowFocused();
-    SetTargetFPS(60);
+     SetTargetFPS(60);
+     /* Register a GLFW-level error callback (if glfw is linked); this helps
+         capture platform/backend errors that raylib may not surface. */
+     glfwSetErrorCallback(GLFWErrorCallback);
 
         // Ensure drawing code is always executed
     // X11 color palette
@@ -383,10 +493,12 @@ int x11(void) {
     int xcalc_workspace = 1;
     int xcalc_sticky = 0;
     // char lastInput[TERM_MAX_COLUMNS] = {0}; // Unused
-    printf("[X11-debug] Entering main loop\n"); fflush(stdout);
     while (running) {
-        printf("[X11-debug] Top of main loop, frameCount=%d\n", frameCount); fflush(stdout);
         frameCount++;
+        /* Heartbeat: print occasionally to detect main-loop stalls (prints every 120 frames) */
+        if ((frameCount % 120) == 0) {
+            printf("[X11-debug] heartbeat frame=%d\n", frameCount); fflush(stdout);
+        }
         int screenWidth = GetScreenWidth();
         int screenHeight = GetScreenHeight();
         topBarH = (int)(48 * (screenHeight / 768.0f));
@@ -412,14 +524,6 @@ int x11(void) {
         int border = (int)(screenWidth * 0.002f);
         int titleH = (int)(termWin.height * 0.07f);
         int closeBtnSz = titleH - 4;
-        // Wait a few frames before checking for close to avoid false positive
-        printf("[X11-debug] frameCount=%d, WindowShouldClose()=%d\n", frameCount, WindowShouldClose()); fflush(stdout);
-        if (frameCount > 5 && WindowShouldClose()) {
-            debug_window_should_close = 1;
-            printf("[X11-debug] WindowShouldClose() returned true - exiting main loop\n"); fflush(stdout);
-            printf("[X11-debug] running = 0 (WindowShouldClose)\n"); fflush(stdout);
-            running = 0;
-        }
         // Global mouse position for focus-follows-mouse and interactions
         Vector2 globalMouse = GetMousePosition();
 
@@ -596,7 +700,12 @@ int x11(void) {
         // Read real shell output and append to terminal buffer
         if (terminal_open && shell.running) {
             char chunk[READ_CHUNK_SIZE];
+            double __r_t0 = GetTime();
             int got = ReadShellOutput(&shell, chunk, sizeof(chunk));
+            double __r_t1 = GetTime();
+            if ((__r_t1 - __r_t0) > 0.05) {
+                printf("[X11-debug] ReadShellOutput blocking? dt=%.3fms\n", (__r_t1 - __r_t0) * 1000.0); fflush(stdout);
+            }
             if (got > 0) {
                 int start = 0;
                 for (int i = 0; i < got; i++) {
@@ -683,7 +792,8 @@ int x11(void) {
             }
         }
 
-        BeginDrawing();
+    double __frame_t0 = GetTime();
+    BeginDrawing();
         // X11 blue background
         ClearBackground(x11_blue);
 
@@ -1277,7 +1387,37 @@ int x11(void) {
             Vector2 promptSz = MeasureTextEx(guiFont, "> ", (float)(promptH*0.7f), 0.0f);
             DrawTextEx(guiFont, inputLine, (Vector2){(float)(x + (int)promptSz.x), (float)(maxY + 10)}, (float)(promptH*0.7f), 0.0f, x11_white);
         }
-        EndDrawing();
+    /* Time and check around EndDrawing()/presentation. This helps detect
+       stalls that occur during buffer swap/presentation or in the driver. */
+    double __end_t0 = GetTime();
+    LogGLError("BeforeEndDrawing", frameCount);
+    EndDrawing();
+    double __end_t1 = GetTime();
+    LogGLError("AfterEndDrawing", frameCount);
+    double __end_dt = __end_t1 - __end_t0;
+    if (__end_dt > 0.02) {
+        printf("[X11-debug] EndDrawing slow frame=%d dt=%.3fms\n", frameCount, __end_dt * 1000.0);
+        fflush(stdout);
+    }
+    /* Optionally force a GPU sync to expose driver stalls when the
+       environment variable WNU_GL_FINISH is set (useful for diagnostics).
+       This is not enabled by default because glFinish() can change timing. */
+    if (GetEnvironmentVariableA("WNU_GL_FINISH", NULL, 0) > 0) {
+        double __gf_t0 = GetTime();
+        glFinish();
+        double __gf_t1 = GetTime();
+        double __gf_dt = __gf_t1 - __gf_t0;
+        if (__gf_dt > 0.02) {
+            printf("[X11-debug] glFinish slow frame=%d dt=%.3fms\n", frameCount, __gf_dt * 1000.0);
+            fflush(stdout);
+        }
+    }
+    double __frame_t1 = GetTime();
+    double __frame_dt = __frame_t1 - __frame_t0;
+    if (__frame_dt > 0.1) {
+        printf("[X11-debug] slow frame=%d dt=%.3fms\n", frameCount, __frame_dt * 1000.0);
+        fflush(stdout);
+    }
 
         // If child process exits, close it and keep terminal window open
         // Only check for shell exit if the terminal is open and shell was running
@@ -1289,20 +1429,18 @@ int x11(void) {
                 // Show message in terminal buffer
                 if (lineCount < TERM_MAX_LINES) {
                     snprintf(lines[lineCount], TERM_MAX_COLUMNS, "[X11] Shell exited. Click Terminal icon to restart.");
-                    Sleep(100); // Small delay to ensure message is seen
-                    terminal_open = 0;
+                    /* Do not Sleep on the main thread; just append message and let GUI continue */
                     lineCount++;
 
                 }
             }
         }
     }
-
-    // Cleanup
+ } // while (running)
+ // Cleanup
     CloseShell(&shell);
     UnloadTexture(logo);
-    UnloadFont(guiFont);
-    printf("waiting for X server to shut down...\n"); fflush(stdout); 
-    ((void (*)(void))CloseWindow)();
-    return 0;
-}}
+        UnloadFont(guiFont);
+        printf("waiting for X server to shut down...\n"); fflush(stdout); 
+        ((void (*)(void))CloseWindow)();
+} //int x11(void)
