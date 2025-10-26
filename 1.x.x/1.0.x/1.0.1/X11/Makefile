@@ -1,12 +1,12 @@
 # Compiler and flags
 CC = C:/msys64/mingw64/bin/gcc.exe
-CFLAGS = -g -Wall -Wextra -std=c11 -Iwsys2
+CFLAGS = -Wall -Wextra -std=c11 -Iwsys2
 
 # Output executable name
 TARGET = x11.exe
 
 # Source files
-SRCS = main.c x11.c
+SRCS = main.c x11.c xcalc.c shell_win.c
 OBJS = $(SRCS:.c=.o)
 
 # Default build

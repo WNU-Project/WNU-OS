@@ -7,11 +7,11 @@ SHELL_TARGET = wnuos.exe
 
 # Source files
 SHELL_SRCS = main.c boot.c userlogin.c poweroff.c halt.c reboot.c \
-			 wsys2/wsys2.c wsys2/package.c tty_session.c motd.c X11/x11.c
+			 wsys2/wsys2.c wsys2/package.c tty_session.c motd.c X11/x11.c X11/shell_win.c
 SHELL_OBJS = $(SHELL_SRCS:.c=.o)
 
 # Libraries
-SHELL_LIBS = -LX11 -lraylib -lgdi32 -luser32 -ladvapi32 -lnetapi32 -lkernel32 -lwininet -lws2_32 -lwinmm
+SHELL_LIBS = -LX11 -lraylib -lopengl32 -lgdi32 -luser32 -ladvapi32 -lnetapi32 -lkernel32 -lwininet -lws2_32 -lwinmm
 
 # Default build
 all: $(SHELL_TARGET) $(GUI_TARGET)
