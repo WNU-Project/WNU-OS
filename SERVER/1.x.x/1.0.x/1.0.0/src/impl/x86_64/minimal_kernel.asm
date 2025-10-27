@@ -14,5 +14,26 @@ header_end:
 section .text
     global _start
 _start:
-    mov byte [0xb8000], 'Z' ; Show Z if booted
+    ; Write a text message to VGA text buffer at 0xb8000
+    ; Characters go at even offsets, attribute bytes at odd offsets.
+    mov rdi, 0xb8000          ; VGA text buffer pointer
+    lea rsi, [rel welcome_msg] ; pointer to message bytes
+
+.write_loop:
+    mov al, [rsi]
+    test al, al
+    je .halt
+    mov [rdi], al            ; character
+    mov byte [rdi+1], 0x07   ; attribute: white on black
+    add rsi, 1
+    add rdi, 2
+    jmp .write_loop
+
+.halt:
+    cli
+.hlt_loop:
     hlt
+    jmp .hlt_loop
+
+section .rodata
+welcome_msg: db "WELCOME TO WNU OS SERVER!", 0

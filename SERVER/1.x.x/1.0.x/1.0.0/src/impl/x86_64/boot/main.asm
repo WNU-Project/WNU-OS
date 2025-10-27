@@ -261,10 +261,12 @@ section .rodata
 
 hex_digits db '0123456789ABCDEF'
 
-banner     db 'BANNER', 10
+banner      db 'WNU OS SERVER 1.0.0',10 
+            db '',10
+            db 'MADE IN ASSEMBLY X86_64',10
 banner_len equ $ - banner
-; clear screen here
-prompt     db 'root@wnu-server:~#', 0
+
+prompt     db 'root@wnu-server:~# ', 0
 prompt_len equ $ - prompt - 1
 
 ; Scancode -> ASCII table (pairs)
