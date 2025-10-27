@@ -3,6 +3,11 @@ global start
 section .text
 bits 64
 
+; WNU SERVER 1.0.0 (BASED ON WNU OS 1.0.1 UPDATE 2) (NO GUI)
+; KERNEL
+; 64 BITS ARE ONLY SUPPORTED
+; THE BOOTLADER IS GRUB
+
 start:
     ; Init stack
     mov rsp, stack_top
