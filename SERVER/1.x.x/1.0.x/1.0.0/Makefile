@@ -1,6 +1,6 @@
 # Docker Linux Is Used to Run this Makefile.
 .PHONY: all
-all: build_x86_64 minimal_kernel
+all: build_x86_64 minimal_kernel install_wnu_os_server
 
 $(x86_64_asm_object_files): build/x86_64/%.o: src/impl/x86_64/%.asm
 	@mkdir -p $(dir $@)
@@ -37,8 +37,9 @@ minimal_kernel: src/impl/x86_64/minimal_kernel.asm src/impl/x86_64/minimal_linke
 	grub-mkrescue /usr/lib/grub/i386-pc -o dist/x86_64/WNU-OS-SERVER-1.0.0.iso targets/x86_64/iso/
 install_wnu_os_server: src/impl/x86_64/boot/install_server_os/main.asm src/impl/x86_64/linker.ld
 	mkdir -p build/x86_64 dist/x86_64
+	nasm -f elf64 src/impl/x86_64/boot/install_server_os/header.asm -o build/x86_64/install_header.o
 	nasm -f elf64 src/impl/x86_64/boot/install_server_os/main.asm -o build/x86_64/install_wnu_os_server.o
-	x86_64-elf-ld -n -o dist/x86_64/install_wnu_os_server.bin -T src/impl/x86_64/linker.ld build/x86_64/install_wnu_os_server.o
+	x86_64-elf-ld -n -o dist/x86_64/install_wnu_os_server.bin -T src/impl/x86_64/linker.ld build/x86_64/install_header.o build/x86_64/install_wnu_os_server.o
 	cp dist/x86_64/install_wnu_os_server.bin targets/x86_64/iso/boot/install_wnu_os_server.bin
 	grub-mkrescue /usr/lib/grub/i386-pc -o dist/x86_64/WNU-OS-SERVER-1.0.0.iso targets/x86_64/iso/
 .PHONY: clean
