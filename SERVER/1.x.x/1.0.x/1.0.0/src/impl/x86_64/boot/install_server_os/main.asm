@@ -6,12 +6,49 @@ section .data
     install_done_msg db "Install complete!", 0
     install_done_len equ $ - install_done_msg - 1
     fb_flag: db 0
+    diag db "BOOT", 0
 
 section .text
     global _start
     bits 64
 
 _start:
+    ; --- Diagnostics: quick VGA + serial write to confirm kernel execution ---
+    ; write "BOOT" to VGA text buffer at 0xB8000 (four characters + attr)
+    lea rdi, [0xb8000]
+    mov byte [rdi], 'B'
+    mov byte [rdi+1], 0x07
+    mov byte [rdi+2], 'O'
+    mov byte [rdi+3], 0x07
+    mov byte [rdi+4], 'O'
+    mov byte [rdi+5], 0x07
+    mov byte [rdi+6], 'T'
+    mov byte [rdi+7], 0x07
+
+    ; initialize COM1 (0x3F8) serial: set DLAB, divisor=3 (38400), 8N1
+    mov dx, 0x3FB      ; LCR (base+3)
+    mov al, 0x80       ; enable DLAB
+    out dx, al
+    mov dx, 0x3F8      ; base
+    mov al, 0x03       ; divisor low (0x0003)
+    out dx, al
+    mov dx, 0x3F9      ; base+1
+    mov al, 0x00       ; divisor high
+    out dx, al
+    mov dx, 0x3FB      ; LCR
+    mov al, 0x03       ; 8 bits, no parity, 1 stop
+    out dx, al
+
+    ; write "BOOT" to serial port
+    lea rsi, [rel diag]
+    mov rcx, 4
+.diag_serial_loop:
+    mov al, [rsi]
+    mov dx, 0x3F8
+    out dx, al
+    inc rsi
+    loop .diag_serial_loop
+
     ; Try to find a framebuffer provided by the multiboot2 info (RDI)
     ; If found, write directly to the linear framebuffer (non-text mode).
     mov rbx, rdi            ; rbx = multiboot2 info pointer
@@ -212,7 +249,8 @@ _start:
 
 .no_fb_found:
     ; Fallback: write to VGA text-mode buffer at 0xB8000
-    mov rdi, 0xb8000
+    ; start on second character line so diagnostic "BOOT" on line0 is preserved
+    lea rdi, [0xb8000 + 160*1]
     lea rsi, [rel message]
     mov rcx, msglen
 .text_print_loop:
@@ -336,7 +374,7 @@ _start:
     mov r10, rdi
     xor r11, r11
 .fb_fill_row:
-    cmp r11, edi
+    cmp r11d, edi
     jge .fb_next_percent
     ; compute address = rdi + r11*4
     mov rax, r15

@@ -15,6 +15,7 @@ $(kernel_object_files): build/kernel/%.o: src/impl/kernel/%.c
 
 .PHONY: build_x86_64
 build_x86_64: build/x86_64/boot/header.o build/x86_64/boot/main.o
+	@echo "Building Main OS Components"
 	mkdir -p dist/x86_64
 	# Ensure all object files are up to date
 	$(MAKE) build/x86_64/boot/header.o
@@ -29,6 +30,7 @@ build/x86_64/boot/%.o: src/impl/x86_64/boot/%.asm
 	nasm -f elf64 $< -o $@
 .PHONY:  minimal_kernel
 minimal_kernel: src/impl/x86_64/minimal_kernel.asm src/impl/x86_64/minimal_linker.ld
+	@echo "Building Minimal Kernel"
 	mkdir -p build/x86_64 dist/x86_64
 	nasm -f elf64 src/impl/x86_64/minimal_kernel.asm -o build/x86_64/minimal_kernel.o
 	x86_64-elf-ld -n -o dist/x86_64/minimal_kernel.bin -T src/impl/x86_64/minimal_linker.ld build/x86_64/minimal_kernel.o
@@ -36,6 +38,7 @@ minimal_kernel: src/impl/x86_64/minimal_kernel.asm src/impl/x86_64/minimal_linke
 	cp dist/x86_64/minimal_kernel.bin targets/x86_64/iso/boot/kernel_minimal.bin
 	grub-mkrescue /usr/lib/grub/i386-pc -o dist/x86_64/WNU-OS-SERVER-1.0.0.iso targets/x86_64/iso/
 install_wnu_os_server: src/impl/x86_64/boot/install_server_os/main.asm src/impl/x86_64/linker.ld
+	@echo "Building Install Components"
 	mkdir -p build/x86_64 dist/x86_64
 	nasm -f elf64 src/impl/x86_64/boot/install_server_os/header.asm -o build/x86_64/install_header.o
 	nasm -f elf64 src/impl/x86_64/boot/install_server_os/main.asm -o build/x86_64/install_wnu_os_server.o
