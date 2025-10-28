@@ -117,104 +117,90 @@ sc_to_ascii:
 .sc_v: mov al, 'v'; ret
 
 _start:
-    ; VGA base
-    mov rdi, 0xb8000
-    ; print banner
+    ; initialize VGA cursor in r12 to a deterministic place
+    mov r12, 0xb8000
+    ; print banner at r12
+    mov rdi, r12
     lea rsi, [rel banner]
     call print_vga
-    ; new line
-    mov byte [rdi], 10
-    mov byte [rdi+1], 0x07
-    add rdi, 2
-
-    ; set prompt line: move down ~8 rows
-    add rdi, 160*8
+    ; advance r12 two lines (160 bytes per line)
+    add r12, 160*2
 
 mainloop:
-    ; print prompt
+    ; print prompt at current cursor (r12)
+    mov rdi, r12
     lea rsi, [rel prompt]
     call print_vga
-    ; reset buffer
-    mov byte [buf_len], 0
-    lea rbx, [buf]
+
+    ; reset buffer pointer and length
+    lea rsi, [rel buf]    ; buffer base in rsi
+    xor rcx, rcx          ; rcx = buf_len
 
 read_loop:
     call get_scancode
-    push rax
-    call sc_to_ascii
-    pop rax
-    cmp al, 0
-    je read_loop
+    call sc_to_ascii        ; result in AL
+    test al, al
+    jz read_loop
     cmp al, 8
     je do_backspace
     cmp al, 10
     je do_enter
-    ; echo
-    mov [rbx], al
-    mov rdi, 0 ; placeholder adjust below
-    ; compute current VGA cursor: reuse rdi set earlier by prompt; to simplify
-    ; we'll just write sequentially by maintaining a local pointer in r12
-    ; if r12 not set, initialize to current rdi
-    cmp r12, 0
-    jne .have_r12
-    lea r12, [0xb8000 + 160*9]
-.have_r12:
+    ; echo character and store in buffer
+    mov [rsi+rcx], al
     mov rdi, r12
-    mov al, [rbx]
     call putc_vga
     mov r12, rdi
-    inc rbx
-    inc byte [buf_len]
+    inc rcx
+    cmp rcx, 127
+    jb read_loop
     jmp read_loop
 
 do_backspace:
-    mov al, [buf_len]
-    test al, al
-    jz read_loop
-    dec byte [buf_len]
-    dec rbx
-    ; move r12 back two bytes
+    cmp rcx, 0
+    je read_loop
+    dec rcx
+    ; move VGA cursor back two bytes and clear
     sub r12, 2
     mov byte [r12], ' '
     mov byte [r12+1], 0x07
     jmp read_loop
 
 do_enter:
-    ; null-terminate
-    mov byte [rbx], 0
-    ; simple command handling
-    lea rsi, [rel buf]
-    ; check fdisk -l
-    lea rdi, [rel fdisk_l]
+    ; null-terminate buffer
+    mov byte [rsi+rcx], 0
+    ; print newline (ASCII 10) as a character
+    mov al, 10
+    mov rdi, r12
+    call putc_vga
+    mov r12, rdi
+
+    ; compare buffer with "fdisk -l"
+    lea rsi, [rel fdisk_l]
+    lea rdx, [rel buf]
     mov rcx, fdisk_l_len
-    push rbx
-    push r12
-    ; compare
-    mov rdx, rsi
-    mov rax, 0
-    mov rbx, 0
-    ; quick memcmp
-    mov rdx, rsi
-    mov rsi, rdi
-    mov rdi, rdx
-    mov rcx, rax
-    ; naive: compare first byte
-    mov al, [buf]
-    cmp al, 'f'
-    jne .other_cmd
-    ; print no_disk
+    ; simple memcmp
+.cmp_loop:
+    cmp rcx, 0
+    je .fdisk_match
+    mov al, [rsi]
+    mov bl, [rdx]
+    cmp al, bl
+    jne .not_fdisk
+    inc rsi
+    inc rdx
+    dec rcx
+    jmp .cmp_loop
+.fdisk_match:
     lea rsi, [rel no_disk]
     mov rdi, r12
     call print_vga
     jmp .after_cmd
-.other_cmd:
-    ; default OK
+.not_fdisk:
     lea rsi, [rel ok_msg]
     mov rdi, r12
     call print_vga
 .after_cmd:
+    ; advance two lines for next prompt
     add r12, 160
     add r12, 160
-    pop r12
-    pop rbx
     jmp mainloop
