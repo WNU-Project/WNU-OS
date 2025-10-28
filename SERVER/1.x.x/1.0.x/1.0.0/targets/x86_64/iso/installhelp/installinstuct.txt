@@ -1,0 +1,39 @@
+            WNU OS SERVER 1.0.0 Installation Instructions (PLEASE UNDERSTNAD THIS IS A PRE-ALPHA VERSION)
+                    ============================================================================
+                1a. When you Boot From The ISO or Installation Media, you will see a GRUB Menu.
+                    1b. Select "WNU OS Server 1.0.0 (INSTALL) (WIP)" to start the installation process.
+                    1c. The installer will load and you will see diagnostic messages on the screen.
+                    1d. Follow the on-screen prompts to complete the installation.
+                    4e. If they don't show up, of you want to follow the Instructions here, Follow the following steps:
+                2a. You will see a Propmt:
+                        root@install:~#
+                    2b. Type in 'fdisk -l' to list the available disks.
+                    2c. It Should Say The Following:
+                        NO DISK FOUND AT HARDWARE
+                    NOTICE: like TempleOS, WNU OS SERVER 1.0.0, The OS runs at Ring 0, which is the KERNEL. so everything you do WRONG is YOUR FAULT. not OURS. So READ CAREFULLY.
+                3a. So If It Shows soemthing, It Might Be a other OS, please in your VM or Server, or Workstation, BOOT to it, AND BACKUP YOUR DATA. because Installing WNU OS SERVER 1.0.0 WILL DELETE ALL DATA ON THE DISK.
+                    3b. After Backing up your data, Reboot the ISO/Installation Media, and go back to the 'root@install:~#' prompt.
+                    now type in the following command:
+                        fdisk /dev/main
+                    3c. Now DELETE ALL PARTITIONS ON THE DISK. (THIS WILL DELETE ALL DATA ON THE DISK, SO MAKE SURE YOU BACKED UP YOUR DATA)
+                    3d. Now Create a New Partition, Make it PRIMARY, and MAKE IT BOOTABLE.
+                    3e. Now Write the changes to the disk and exit fdisk.
+                4a. The Filesystem will be The UNIX Filesystem (UNFS), which is a simple filesystem made for WNU OS.
+                    4b. Now Format the Partition with UNFS:
+                        mkfs.unfs /dev/main1
+                    4c. Now Mount the Partition to /mnt:
+                        mount /dev/main1 /mnt
+                5a. Now We'll Install The Main System files to the disk.
+                    5b. Type in the Following command:
+                        cp -r ~/filesystem/* {HARDWARE_DISK_MOUNT_POINT}
+                    5c. This will copy all the files to the disk.
+                    5d. Now Install the Bootloader (GRUB):
+                        grub-install --root-directory=/mnt /dev/main
+                    5e. Now Install the PACMAN Package Manager:
+                        cp ~/pacman/* {HARDWARE_DISK_MOUNT_POINT}/usr/bin
+                6a. Now Install The BOOTLOADER (CRITAL STEP IF YOU DO THIS WRONG, REINSTALL EVERYTHING)
+                    6b. Type in the following command:
+                        grub-install --root-directory=/mnt /dev/main
+                    6c. This will install GRUB to the disk.
+                GOOD JOB! YOU HAVE INSTALLED WNU OS SERVER 1.0.0 SUCCESSFULLY!
+                NOW REBOOT YOUR SYSTEM, AND REMOVE THE INSTALLATION MEDIA/ISO, AND BOOT TO YOUR NEW WNU OS SERVER 1.0.0 SERVER!
