@@ -9,19 +9,21 @@ $(x86_64_c_object_files): build/x86_64/%.o: src/impl/x86_64/%.c
 	@mkdir -p $(dir $@)
 	x86_64-elf-gcc -c -I src/intf -ffreestanding $(patsubst build/x86_64/%.o, src/impl/x86_64/%.c, $@) -o $@ -O2 -Wall -Wextra
 
-$(kernel_object_files): build/kernel/%.o: src/impl/kernel/%.c
+build/kernel/%.o: src/impl/kernel/%.c
 	@mkdir -p $(dir $@)
-	x86_64-elf-gcc -c -I src/intf -ffreestanding $(patsubst build/kernel/%.o, src/impl/kernel/%.c, $@) -o $@ -O2 -Wall -Wextra
+	x86_64-elf-gcc -c -I src/intf -ffreestanding $< -o $@ -O2 -Wall -Wextra
 
 .PHONY: build_x86_64
-build_x86_64: build/x86_64/boot/header.o build/x86_64/boot/main.o
+build_x86_64: build/x86_64/boot/header.o build/x86_64/boot/main.o $(kernel_object_files)
 	@echo "Building Main OS Components"
 	mkdir -p dist/x86_64
 	# Ensure all object files are up to date
 	$(MAKE) build/x86_64/boot/header.o
 	$(MAKE) build/x86_64/boot/main.o
+	# Ensure C kernel object files are built
+	$(MAKE) $(kernel_object_files)
 	# Link header.o first and only once
-	x86_64-elf-ld -n -o dist/x86_64/kernel.bin -T src/impl/x86_64/linker.ld build/x86_64/boot/header.o build/x86_64/boot/main.o
+	x86_64-elf-ld -n -o dist/x86_64/kernel.bin -T src/impl/x86_64/linker.ld build/x86_64/boot/header.o build/x86_64/boot/main.o $(kernel_object_files)
 	cp dist/x86_64/kernel.bin targets/x86_64/iso/boot/kernel.bin
 	grub-mkrescue /usr/lib/grub/i386-pc -o dist/x86_64/WNU-OS-SERVER-1.0.0.iso targets/x86_64/iso
 

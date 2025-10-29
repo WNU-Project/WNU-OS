@@ -11,6 +11,9 @@ prompt db "root@install:~# ",0
 no_disk db "NO DISK FOUND AT HARDWARE",0
 done_msg db "Operation completed.",0
 ok_msg db "OK",0
+boot_msg db "[dbg] BOOT\n",0
+prompt_msg db "[dbg] PROMPT\n",0
+enter_msg db "[dbg] ENTER\n",0
 
 fdisk_l db "fdisk -l",0
 fdisk_l_len equ $-fdisk_l
@@ -45,6 +48,39 @@ putc_vga:
     mov [rdi], al
     mov byte [rdi+1], 0x07
     add rdi, 2
+    ret
+
+; -----------------
+; Serial (COM1) helpers for debugging
+; -----------------
+; serial_putc: write AL to COM1 (0x3F8)
+serial_putc:
+    push rdx
+.sp_wait:
+    mov dx, 0x3FD        ; Line Status Register (COM1 + 5)
+    in al, dx
+    test al, 0x20      ; Transmitter Holding Register Empty
+    jz .sp_wait
+    ; write byte in AL to COM1
+    mov dx, 0x3F8
+    out dx, al
+    pop rdx
+    ret
+
+; serial_print: RSI -> NUL-terminated string
+serial_print:
+    push rax
+    push rsi
+    .sp_loop:
+        mov al, [rsi]
+        test al, al
+        jz .sp_done
+        call serial_putc
+        inc rsi
+        jmp .sp_loop
+    .sp_done:
+    pop rsi
+    pop rax
     ret
 
 ; get scancode from keyboard controller in AL
@@ -123,6 +159,9 @@ _start:
     mov rdi, r12
     lea rsi, [rel banner]
     call print_vga
+    ; serial log: boot reached
+    lea rsi, [rel boot_msg]
+    call serial_print
     ; advance r12 two lines (160 bytes per line)
     add r12, 160*2
 
@@ -131,6 +170,9 @@ mainloop:
     mov rdi, r12
     lea rsi, [rel prompt]
     call print_vga
+    ; serial log: prompt printed
+    lea rsi, [rel prompt_msg]
+    call serial_print
 
     ; reset buffer pointer and length
     lea rsi, [rel buf]    ; buffer base in rsi
@@ -173,6 +215,9 @@ do_enter:
     mov rdi, r12
     call putc_vga
     mov r12, rdi
+    ; serial log: enter pressed
+    lea rsi, [rel enter_msg]
+    call serial_print
 
     ; compare buffer with "fdisk -l"
     lea rsi, [rel fdisk_l]
