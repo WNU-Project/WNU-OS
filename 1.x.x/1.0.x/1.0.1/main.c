@@ -15,6 +15,7 @@
 #include "motd.h"      // Include motd function
 // Include GUI header so main can call x11()
 #include "X11/x11.h"
+#include "fastfetch.h"
 
 #ifndef PROCESSOR_ARCHITECTURE_ARM64
 #define PROCESSOR_ARCHITECTURE_ARM64 12
@@ -911,6 +912,9 @@ int main(void) {
         else if (strcmp(command, "startx") == 0) {
             printf("Starting graphical environment...\n");
             x11();
+        }
+        else if (strcmp(command, "fastfetch") == 0) {
+            fastfetch();
         }
         else if (strlen(command) > 0) {
             system(command); // Run external command
