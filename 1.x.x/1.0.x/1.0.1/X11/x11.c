@@ -22,7 +22,10 @@
 #include "xclock_logo.h"
 #include "xcalc_logo.h"
 #include "xcalc.h"
+#include "xeyes.h"
 #include "shell_win.h"
+#include "xeyes_logo.h"
+#include "xeyes.h"
 
 // --- Terminal buffer and shell process definitions ---
 #define TERM_MAX_LINES    512
@@ -62,21 +65,22 @@ static void draw_xcalc_widget(Rectangle *xcalcWin, int *xcalc_open, int *xcalc_m
         if (xcalcWin->width < 220) xcalcWin->width = 220;
         if (xcalcWin->height < 200) xcalcWin->height = 200;
 
-        // Window frame
-        DrawRectangle((int)xcalcWin->x, (int)xcalcWin->y, (int)xcalcWin->width, (int)xcalcWin->height, (Color){80,80,120,255});
-        DrawRectangle((int)xcalcWin->x + xb, (int)xcalcWin->y + xb, (int)xcalcWin->width - 2*xb, (int)xcalcWin->height - 2*xb, (Color){255,255,255,255});
-        // Title bar
-        DrawRectangle((int)xcalcWin->x + xb, (int)xcalcWin->y + xb, (int)xcalcWin->width - 2*xb, titleH, (Color){60,60,80,255});
-        DrawTextEx(guiFont, "xcalc", (Vector2){xcalcWin->x + xb + 8, xcalcWin->y + xb + 6}, 14.0f, 0.0f, (Color){255,255,255,255});
+        // FWVM 3.x flat window frame with shadow
+        DrawRectangle((int)xcalcWin->x + 2, (int)xcalcWin->y + 2, (int)xcalcWin->width, (int)xcalcWin->height, (Color){0,0,0,60}); // Shadow
+        DrawRectangle((int)xcalcWin->x, (int)xcalcWin->y, (int)xcalcWin->width, (int)xcalcWin->height, (Color){76,76,76,255}); // Border
+        DrawRectangle((int)xcalcWin->x + xb, (int)xcalcWin->y + xb, (int)xcalcWin->width - 2*xb, (int)xcalcWin->height - 2*xb, (Color){240,240,240,255}); // Light bg
+        // Modern flat title bar
+        DrawRectangle((int)xcalcWin->x + xb, (int)xcalcWin->y + xb, (int)xcalcWin->width - 2*xb, titleH, (Color){25,25,25,255}); // Dark titlebar
+        DrawTextEx(guiFont, "FWVM Calculator 3.x", (Vector2){xcalcWin->x + xb + 8, xcalcWin->y + xb + 8}, 14.0f, 0.0f, (Color){255,255,255,255});
 
-        // Close button
-        int closeSz = titleH - 6;
-        int closeX = (int)(xcalcWin->x + xcalcWin->width - closeSz - xb - 4);
-        int closeY = (int)(xcalcWin->y + xb + 3);
+        // Modern flat close button (Windows style)
+        int closeSz = titleH - 8;
+        int closeX = (int)(xcalcWin->x + xcalcWin->width - closeSz - xb - 6);
+        int closeY = (int)(xcalcWin->y + xb + 4);
         Vector2 mpos = GetMousePosition();
         *xcalc_close_hover = CheckCollisionPointRec(mpos, (Rectangle){(float)closeX,(float)closeY,(float)closeSz,(float)closeSz});
-        DrawRectangle(closeX, closeY, closeSz, closeSz, *xcalc_close_hover ? RED : (Color){120,120,120,255});
-        DrawTextEx(guiFont, "X", (Vector2){(float)(closeX+4),(float)(closeY+2)}, 14.0f, 0.0f, (Color){255,255,255,255});
+        DrawRectangle(closeX, closeY, closeSz, closeSz, *xcalc_close_hover ? (Color){232,17,35,255} : (Color){232,17,35,255}); // Windows red
+        DrawTextEx(guiFont, "×", (Vector2){(float)(closeX+4),(float)(closeY+2)}, 14.0f, 0.0f, (Color){255,255,255,255});
 
         // Display area
         float clientX = xcalcWin->x + xb + 8;
@@ -172,7 +176,16 @@ static void draw_xcalc_widget(Rectangle *xcalcWin, int *xcalc_open, int *xcalc_m
             }
         }
         if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) { drag = 0; *xcalc_resizing = 0; }
-        if (drag && *last_clicked == WIN_XCALC) { Vector2 mm = GetMousePosition(); xcalcWin->x = mm.x - dragOffset.x; xcalcWin->y = mm.y - dragOffset.y; }
+        if (drag && *last_clicked == WIN_XCALC) { 
+            Vector2 mm = GetMousePosition(); 
+            xcalcWin->x = mm.x - dragOffset.x; 
+            xcalcWin->y = mm.y - dragOffset.y; 
+            // Keep window on screen
+            if (xcalcWin->x < 0) xcalcWin->x = 0;
+            if (xcalcWin->y < 48) xcalcWin->y = 48; // Below top bar
+            if (xcalcWin->x + xcalcWin->width > screenWidth) xcalcWin->x = screenWidth - xcalcWin->width;
+            if (xcalcWin->y + xcalcWin->height > screenHeight - 48) xcalcWin->y = screenHeight - 48 - xcalcWin->height; // Above taskbar
+        }
         if (*xcalc_resizing) { Vector2 rm = GetMousePosition(); float nw = rm.x - xcalcWin->x; if (nw < 220) nw = 220; if (nw > screenWidth - xcalcWin->x) nw = screenWidth - xcalcWin->x - 8; float nh = rm.y - xcalcWin->y; if (nh < 200) nh = 200; if (nh > screenHeight - xcalcWin->y) nh = screenHeight - xcalcWin->y - 8; xcalcWin->width = nw; xcalcWin->height = nh; }
     }
 
@@ -188,1097 +201,826 @@ static void draw_xcalc_widget(Rectangle *xcalcWin, int *xcalc_open, int *xcalc_m
 }
 
 int x11(void) {
-    char currentos_buf[128] = {0};
-    /* Keep Windows API usage out of this file; use a stable string here. */
-    strncpy(currentos_buf, "Windows (unknown version)", sizeof(currentos_buf)-1);
-    currentos_buf[sizeof(currentos_buf)-1] = '\0';
-    char* currentos = currentos_buf;
-
-    OSVERSIONINFOEXW osvi;
-    ZeroMemory(&osvi, sizeof(OSVERSIONINFOEXW));
-    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
-    if (GetVersionExW((OSVERSIONINFOW*)&osvi)) {
-        printf("[Windows version: %lu.%lu (build %lu), platform %lu\n",
-            osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber, osvi.dwPlatformId);
-    } else {
-        printf("Could not determine Windows version.\n");
-    }
-    // Removed debug and informational prints for production build
-    int initialScreenWidth  = 1024;
-    int initialScreenHeight = 768;
-    // Context menu state (must be after raylib include)
-    int showContextMenu = 0;
-    Vector2 contextMenuPos = {0};
-    int contextMenuHover = -1;
-    int contextMenuSetFrame = -1;
-    SetConfigFlags(FLAG_WINDOW_ALWAYS_RUN | FLAG_WINDOW_RESIZABLE);
-    InitWindow(initialScreenWidth, initialScreenHeight, "X11 Desktop (FVWM 3.x)");
-    SetWindowFocused();
+    // Print OS it was build for and get the OS version
+    OSVERSIONINFOEX osvi;
+    memset(&osvi, 0, sizeof(OSVERSIONINFOEX));
+    osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
+    printf("");
+    // Initialize raylib with FWVM 3.x branding
+    const int screenWidth = 1024;
+    const int screenHeight = 768;
+    InitWindow(screenWidth, screenHeight, "FWVM 3.x - Flat Windows Virtual Machine");
     SetTargetFPS(60);
 
-    // X11 color palette
-    Color x11_blue    = (Color){ 40,  60, 180, 255}; // X11 blue
-    Color x11_gray    = (Color){200, 200, 210, 255}; // X11 light gray
-    Color x11_dkgray  = (Color){ 60,  60,  70, 255}; // X11 dark gray
-    Color x11_white   = (Color){255, 255, 255, 255};
-    Color x11_border  = (Color){ 80,  80, 120, 255};
-    Color x11_title   = (Color){ 30,  30,  60, 255};
-    Color x11_term_bg = (Color){ 18,  18,  18, 255};
-    Color x11_term_fg = (Color){  0, 255, 128, 255};
+    // Load textures from memory and fonts
+    Image logoImg = LoadImageFromMemory(".png", X11_png, X11_png_len);
+    Texture2D logo = LoadTextureFromImage(logoImg);
+    UnloadImage(logoImg);
+    
+    Image xtermImg = LoadImageFromMemory(".png", xterm_png, xterm_png_len);
+    Texture2D xtermlogo = LoadTextureFromImage(xtermImg);
+    UnloadImage(xtermImg);
+    
+    Image xclockImg = LoadImageFromMemory(".png", xclock_png, xclock_png_len);
+    Texture2D xclocklogo = LoadTextureFromImage(xclockImg);
+    UnloadImage(xclockImg);
+    
+    Image xcalcImg = LoadImageFromMemory(".png", xcalc_png, xcalc_png_len);
+    Texture2D xcalclogo = LoadTextureFromImage(xcalcImg);
+    UnloadImage(xcalcImg);
+    Image xeyesImg = LoadImageFromMemory(".png", xeyes_png, xeyes_png_len);
+    Texture2D xeyeslogo = LoadTextureFromImage(xeyesImg);
+    UnloadImage(xeyesImg);
 
-    // Load resources ONCE before main loop
-    Image logoImage = LoadImageFromMemory(".png", X11_png, X11_png_len);
-    Texture2D logo  = LoadTextureFromImage(logoImage);
-    Image xtermlgoImage = LoadImageFromMemory(".png", xterm_png, xterm_png_len);
-    Texture2D xtermlogo  = LoadTextureFromImage(xtermlgoImage);
-    Image xclocklgoImage = LoadImageFromMemory(".png", xclock_png, xclock_png_len);
-    Texture2D xclocklogo  = LoadTextureFromImage(xclocklgoImage);
-    Image xcalclgoImage = LoadImageFromMemory(".png", xcalc_png, xcalc_png_len);
-    Texture2D xcalclogo  = LoadTextureFromImage(xcalclgoImage);
-    UnloadImage(logoImage);
-    UnloadImage(xtermlgoImage);
-    UnloadImage(xclocklgoImage);
-    UnloadImage(xcalclgoImage);
-    // Load GUI font (fall back to a common Windows font)
-    Font guiFont = LoadFontEx("C:\\Windows\\Fonts\\arial.ttf", 24, NULL, 0);
+    Font guiFont = LoadFontEx("C:\\Windows\\Fonts\\arial.ttf", 24, 0, 95);
 
-    // Desktop icon (move lower, right of top bar)
-    const float iconScale = 0.18f;
-    int topBarH = 48;
+    // FWVM 3.x Color Scheme - Modern Flat Windows Style
+    Color fwvm_bg = {45, 45, 48, 255};           // Dark charcoal background
+    Color fwvm_accent = {0, 120, 215, 255};      // Windows 10 blue accent
+    Color fwvm_white = {255, 255, 255, 255};     // Pure white
+    Color fwvm_light_gray = {240, 240, 240, 255}; // Light gray for panels
+    Color fwvm_dark_gray = {32, 32, 32, 255};    // Dark panel color
+    Color fwvm_taskbar = {25, 25, 25, 255};      // Almost black taskbar
+    Color fwvm_border = {76, 76, 76, 255};       // Subtle border color
+    Color fwvm_hover = {70, 130, 180, 255};      // Hover state blue
+    Color fwvm_term_bg = {12, 12, 12, 255};      // Terminal background
+    Color fwvm_term_fg = {204, 204, 204, 255};   // Terminal text
+
+    // State variables
+    int running = 1;
+    int frameCount = 0;
+    int showContextMenu = 0;
+    Vector2 contextMenuPos = {0, 0};
+    int contextMenuSetFrame = 0;
+    
+    // Terminal state
     int terminal_open = 0;
-    int xclock_open = 0;
-    Rectangle termWin = {0};
-    Rectangle xclockWin = {0};
+    int terminal_minimized = 0;
+    int terminal_dragging = 0;
+    Vector2 terminal_drag_offset = {0, 0};
+    Rectangle termWin = {screenWidth * 0.31f, screenHeight * 0.23f, screenWidth * 0.62f, screenHeight * 0.55f};
+    char inputLine[256] = {0};
+    int inputPos = 0;
+    int terminal_focused = 0;
+    int clear_terminal_requested = 0;
+    
+    // xcalc state
     int xcalc_open = 0;
-    Rectangle xcalcWin = {0};
     int xcalc_minimized = 0;
     int xcalc_resizing = 0;
     int xcalc_close_hover = 0;
-    // xcalc_dragging and xcalcDragOffset are now managed inside draw_xcalc_widget
-    /* Calculator state moved into draw_xcalc_widget(); no outer duplicates */
-    int utilities_open = 0;
-    Rectangle utilitiesWin = {0};
-    int dragging = 0;
-    int xclock_dragging = 0;
-    int utilities_dragging = 0;
-    Vector2 dragOffset = {0};
-    Vector2 xclockDragOffset = {0};
-    Vector2 utilitiesDragOffset = {0};
-    int close_hover = 0;
-    int xclock_close_hover = 0;
-    int utilities_close_hover = 0;
-
-    /* FVWM-like extra state */
-    int focus_follows_mouse = 0; /* toggleable */
-    int focused_window = -1;     /* WIN_* id currently focused for keyboard ops */
-    /* resize state per-window */
-    int term_resizing = 0;
-    int xclock_resizing = 0;
-    int utilities_resizing = 0;
-    /* minimized/iconified flags */
+    int xcalc_workspace = 0;
+    int xcalc_sticky = 0;
+    Rectangle xcalcWin = {400, 200, 220, 300};
+    
+    // xclock state
+    int xclock_open = 0;
     int xclock_minimized = 0;
+    int xclock_dragging = 0;
+    Vector2 xclock_drag_offset = {0, 0};
+    Rectangle xclockWin = {600, 150, 200, 200};
+    
+    // Utilities window state
+    int utilities_open = 0;
     int utilities_minimized = 0;
-    /* sticky windows (appear on all workspaces) */
-    int term_sticky = 0;
-    int xclock_sticky = 0;
-    int utilities_sticky = 0;
+    int utilities_dragging = 0;
+    Vector2 utilities_drag_offset = {0, 0};
+    Rectangle utilitiesWin = {300, 200, 280, 200};
+    
+    // About dialog state
+    int about_open = 0;
+    int about_dragging = 0;
+    Vector2 about_drag_offset = {0, 0};
+    Rectangle aboutWin = {350, 250, 400, 200};
+    
+    // XEyes state
+    int xeyes_open = 0;
+    int xeyes_minimized = 0;
+    int xeyes_dragging = 0;
+    Vector2 xeyes_drag_offset = {0, 0};
+    Rectangle xeyesWin = {500, 300, 240, 150};
+    
+    // Window management
+    int last_clicked = -1;
 
-    // Terminal content buffer
-    char  lines[TERM_MAX_LINES][TERM_MAX_COLUMNS];
-    int   lineCount = 0;
-    char  inputLine[TERM_MAX_COLUMNS] = {0};
-    int   inputLen = 0;
-
+    int focused_window = -1;
+    int workspace = 0;
+    const int WIN_TERM = 1;
+    const int WIN_XCALC = 2;
+    const int WIN_XCLOCK = 3;
+    const int WIN_UTILITIES = 4;
+    const int WIN_XEYES = 5;
+    
+    // Shell process
     ChildProc* shell = NULL;
 
-    int running = 1;
-    int debug_window_should_close = 0;
-    (void)debug_window_should_close; // intentionally kept for future debug hooks
-    (void)x11_border; // silence unused-variable warning; keep color available for future UI tweaks
-    int frameCount = 0;
-    int terminal_minimized = 0;
-    int workspace = 1, workspaceCount = 4;
-    /* Window IDs for z-order/overlap handling */
-    #define WIN_TERM 0
-    #define WIN_XCLOCK 1
-    #define WIN_UTILS 2
-    #define WIN_XCALC 3
-    int last_clicked = -1; /* last clicked window id; drawn on top */
-    /* Per-window workspace assignments (FVWM-style virtual desktops) */
-    int term_workspace = 1;
-    int xclock_workspace = 1;
-    int utilities_workspace = 1;
-    int xcalc_workspace = 1;
-    int xcalc_sticky = 0;
-    // Main loop
     printf("DEBUG: Starting main loop, running=%d, WindowShouldClose()=%d\n", running, WindowShouldClose());
     fflush(stdout);
+
+    // Main loop
     while (running && !WindowShouldClose()) {
         frameCount++;
-        if (frameCount == 1) {
-            printf("DEBUG: First frame entered successfully\n");
-            fflush(stdout);
-        }
-        
+
         // Begin drawing
-        if (frameCount <= 2) {
-            printf("DEBUG: About to call BeginDrawing() for frame %d\n", frameCount);
-            fflush(stdout);
-        }
         BeginDrawing();
-        if (frameCount <= 2) {
-            printf("DEBUG: BeginDrawing() completed, clearing background for frame %d\n", frameCount);
-            fflush(stdout);
-        }
-        ClearBackground(x11_blue); // X11 blue background
-        if (frameCount <= 2) {
-            printf("DEBUG: ClearBackground() completed for frame %d\n", frameCount);
-            fflush(stdout);
-        }
         
-        int screenWidth = GetScreenWidth();
-        int screenHeight = GetScreenHeight();
-        topBarH = (int)(48 * (screenHeight / 768.0f));
-        if (frameCount <= 2) {
-            printf("DEBUG: Screen size: %dx%d, topBarH: %d for frame %d\n", screenWidth, screenHeight, topBarH, frameCount);
-            fflush(stdout);
-        }
+        // Clear background - FWVM 3.x flat style
+        ClearBackground(fwvm_bg);
         
-        // Draw FVWM-like top bar
-        DrawRectangle(0, 0, screenWidth, topBarH, (Color){60, 60, 80, 255});
-        if (frameCount <= 2) {
-            printf("DEBUG: Drew top bar rectangle for frame %d\n", frameCount);
-            fflush(stdout);
-        }
+        // Draw modern flat top bar
+        int topBarH = 48;
+        DrawRectangle(0, 0, screenWidth, topBarH, fwvm_taskbar);
+        DrawRectangle(0, topBarH-1, screenWidth, 1, fwvm_border); // Subtle border
+        DrawTextEx(guiFont, "FWVM 3.x Desktop", (Vector2){10, 12}, 20, 0.0f, fwvm_white);
         
-        // Menu button (left)
-        int menuBtnH = topBarH - 8;
-        int menuBtnW = menuBtnH; // square button
-        int menuBtnX = 8, menuBtnY = 4;
-        DrawRectangle(menuBtnX, menuBtnY, menuBtnW, menuBtnH, (Color){80, 80, 120, 255});
-        if (frameCount <= 2) {
-            printf("DEBUG: About to draw menu text with guiFont for frame %d\n", frameCount);
-            fflush(stdout);
-        }
-        DrawTextEx(guiFont, "≡", (Vector2){(float)(menuBtnX + menuBtnW/4), (float)(menuBtnY + menuBtnH/6)}, (float)(menuBtnH/2), 0.0f, x11_white);
-        if (frameCount <= 2) {
-            printf("DEBUG: Drew menu text successfully for frame %d\n", frameCount);
-            fflush(stdout);
-        }
-        // Anchor icon position and size
+        // Draw desktop icons
+        float iconScale = 0.18f;
         int icon_x = 32;
         int icon_y = topBarH + 32;
-        if (frameCount <= 2) {
-            printf("DEBUG: About to access logo dimensions (width=%d, height=%d) for frame %d\n", logo.width, logo.height, frameCount);
-            fflush(stdout);
-        }
-        int icon_w = (int)(logo.width  * iconScale);
+        int icon_w = (int)(logo.width * iconScale);
         int icon_h = (int)(logo.height * iconScale);
-        if (frameCount <= 2) {
-            printf("DEBUG: Calculated icon size: %dx%d for frame %d\n", icon_w, icon_h, frameCount);
-            fflush(stdout);
-        }
-        // Anchor terminal window size/position if not dragging
-        if (!dragging && !terminal_open) {
-            termWin.x = screenWidth * 0.31f;
-            termWin.y = screenHeight * 0.23f;
-            termWin.width = screenWidth * 0.62f;
-            termWin.height = screenHeight * 0.55f;
-        } else if (!dragging && terminal_open && (termWin.width > screenWidth || termWin.height > screenHeight)) {
-            // Clamp terminal window to fit inside window
-            if (termWin.x + termWin.width > screenWidth) termWin.x = screenWidth - termWin.width;
-            if (termWin.y + termWin.height > screenHeight) termWin.y = screenHeight - termWin.height;
-            if (termWin.x < 0) termWin.x = 0;
-            if (termWin.y < 0) termWin.y = 0;
-        }
-    // Compute title bar and button metrics so dragging and drawing share coordinates
-    int border = (int)(screenWidth * 0.002f);
-    int titleH = (int)(termWin.height * 0.07f);
-    int closeBtnSz = titleH - 4;
-    // Global mouse position for focus-follows-mouse and interactions
-    Vector2 globalMouse = GetMousePosition();
+        
+        // FWVM desktop icons with flat style
+        DrawTextureEx(logo, (Vector2){(float)icon_x, (float)icon_y}, 0.0f, iconScale, fwvm_white);
+        DrawTextEx(guiFont, "FWVM", (Vector2){(float)icon_x, (float)(icon_y + icon_h + 4)}, 14, 0.0f, fwvm_white);
+        
+        // Terminal icon
+        int term_icon_x = icon_x + icon_w + 32;
+        DrawTextureEx(xtermlogo, (Vector2){(float)term_icon_x, (float)icon_y}, 0.0f, iconScale, fwvm_white);
+        DrawTextEx(guiFont, "Terminal", (Vector2){(float)term_icon_x, (float)(icon_y + icon_h + 4)}, 14, 0.0f, fwvm_white);
+        
+        // Calculator icon  
+        int calc_icon_x = term_icon_x + icon_w + 32;
+        DrawTextureEx(xcalclogo, (Vector2){(float)calc_icon_x, (float)icon_y}, 0.0f, iconScale, fwvm_white);
+        DrawTextEx(guiFont, "Calculator", (Vector2){(float)calc_icon_x, (float)(icon_y + icon_h + 4)}, 14, 0.0f, fwvm_white);
+        
+        // Clock icon
+        int clock_icon_x = calc_icon_x + icon_w + 32;
+        DrawTextureEx(xclocklogo, (Vector2){(float)clock_icon_x, (float)icon_y}, 0.0f, iconScale, fwvm_white);
+        DrawTextEx(guiFont, "Clock", (Vector2){(float)clock_icon_x, (float)(icon_y + icon_h + 4)}, 14, 0.0f, fwvm_white);
+        
+        // Utilities icon (using xcalc logo as placeholder)
+        int utils_icon_x = clock_icon_x + icon_w + 32;
+        DrawTextureEx(xcalclogo, (Vector2){(float)utils_icon_x, (float)icon_y}, 0.0f, iconScale, (Color){150, 200, 255, 255}); // Light blue tint
+        DrawTextEx(guiFont, "Utilities", (Vector2){(float)utils_icon_x, (float)(icon_y + icon_h + 4)}, 14, 0.0f, fwvm_white);
+        
+        // XEyes icon (using xeyes logo)
+        int xeyes_icon_x = utils_icon_x + icon_w + 32;
+        DrawTextureEx(xeyeslogo, (Vector2){(float)xeyes_icon_x, (float)icon_y}, 0.0f, iconScale, fwvm_white);
+        DrawTextEx(guiFont, "XEyes", (Vector2){(float)xeyes_icon_x, (float)(icon_y + icon_h + 4)}, 14, 0.0f, fwvm_white);
 
-        // Toggle focus-follows-mouse with Ctrl+F
-        if (IsKeyPressed(KEY_F) && (IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL))) {
-            focus_follows_mouse = !focus_follows_mouse;
-        }
-
-        // If focus-follows-mouse is enabled, set focused_window under pointer
-        if (focus_follows_mouse) {
-            focused_window = -1;
-            if (terminal_open && !terminal_minimized && (term_workspace == workspace || term_sticky)) {
-                if (CheckCollisionPointRec(globalMouse, termWin)) focused_window = WIN_TERM;
-            }
-            if (focused_window == -1 && xclock_open && !xclock_minimized && (xclock_workspace == workspace || xclock_sticky)) {
-                Rectangle xr = (Rectangle){ xclockWin.x, xclockWin.y, xclockWin.width, xclockWin.height };
-                if (CheckCollisionPointRec(globalMouse, xr)) focused_window = WIN_XCLOCK;
-            }
-            if (focused_window == -1 && utilities_open && !utilities_minimized && (utilities_workspace == workspace || utilities_sticky)) {
-                Rectangle ur = (Rectangle){ utilitiesWin.x, utilitiesWin.y, utilitiesWin.width, utilitiesWin.height };
-                if (CheckCollisionPointRec(globalMouse, ur)) focused_window = WIN_UTILS;
-            }
-        }
-
-        // Handle right-click anywhere (for easier testing)
-        // Wait a few frames before accepting input to avoid spurious startup events
-        if (frameCount > 10 && IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
+        // Handle right-click context menu
+        if (frameCount > 60 && IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
             Vector2 mouse = GetMousePosition();
-            printf("DEBUG: Context menu opened at frame %d, mouse at (%.1f, %.1f)\n", frameCount, mouse.x, mouse.y);
-            fflush(stdout);
             showContextMenu = 1;
             contextMenuPos = mouse;
             contextMenuSetFrame = frameCount;
         }
-    // Handle left-click on context menu (ignore clicks on the same frame the menu was opened)
-    // Use release so holding the button while launching the app won't immediately select an item
-    // Also wait for startup to stabilize before accepting any menu clicks
-        if (showContextMenu && frameCount > 30 && IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && frameCount > contextMenuSetFrame) {
-            printf("DEBUG: Left mouse released at frame %d, menu set at frame %d\n", frameCount, contextMenuSetFrame);
-            fflush(stdout);
+
+        // Handle left-click on context menu
+        if (showContextMenu && frameCount > 90 && IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && frameCount > (contextMenuSetFrame + 10)) {
             Vector2 mouse = GetMousePosition();
             int menuW = 180, menuH = 32;
             int menuX = (int)contextMenuPos.x;
             int menuY = (int)contextMenuPos.y;
-            // Clamp menu so all 4 rows fit on screen
-            int totalH = menuH * 4;
+            
+            // Clamp menu to screen
             if (menuX + menuW > screenWidth) menuX = screenWidth - menuW - 8;
-            if (menuY + totalH > screenHeight) menuY = screenHeight - totalH - 8;
+            if (menuY + menuH * 7 > screenHeight) menuY = screenHeight - menuH * 7 - 8;
+            
             Rectangle xtermRect = {menuX, menuY, menuW, menuH};
-            Rectangle aboutRect = {menuX, menuY + menuH, menuW, menuH};
-            Rectangle utilitiesRect = {menuX, menuY + 2*menuH, menuW, menuH};
-            Rectangle exitRect  = {menuX, menuY + 3*menuH, menuW, menuH};
+            Rectangle xcalcRect = {menuX, menuY + menuH, menuW, menuH};
+            Rectangle xclockRect = {menuX, menuY + 2*menuH, menuW, menuH};
+            Rectangle utilitiesRect = {menuX, menuY + 3*menuH, menuW, menuH};
+            Rectangle xeyesRect = {menuX, menuY + 4*menuH, menuW, menuH};
+            Rectangle aboutRect = {menuX, menuY + 5*menuH, menuW, menuH};
+            Rectangle exitRect = {menuX, menuY + 6*menuH, menuW, menuH};
+            
             if (CheckCollisionPointRec(mouse, xtermRect)) {
-                // Launch terminal if not open
                 if (!terminal_open) {
                     terminal_open = 1;
-                    if (!shell) shell = CreateChildProc();
-                    LaunchShell(shell, "\"C:\\WNU\\WNU OS\\wnuos.exe\"");
-                    term_workspace = workspace; /* assign to current workspace */
-                    lineCount = 0;
-                    inputLen = 0;
-                    inputLine[0] = '\0';
+                    if (!shell) {
+                        shell = CreateChildProc();
+                        LaunchShell(shell, "C:\\WNU\\WNU OS\\wnuos.exe");
+                    }
+                    last_clicked = WIN_TERM;
+                }
+            } else if (CheckCollisionPointRec(mouse, xcalcRect)) {
+                if (!xcalc_open) {
+                    xcalc_open = 1;
+                    last_clicked = WIN_XCALC;
+                }
+            } else if (CheckCollisionPointRec(mouse, xclockRect)) {
+                if (!xclock_open) {
+                    xclock_open = 1;
+                    last_clicked = WIN_XCLOCK;
+                }
+            } else if (CheckCollisionPointRec(mouse, utilitiesRect)) {
+                if (!utilities_open) {
+                    utilities_open = 1;
+                    last_clicked = WIN_UTILITIES;
+                }
+            } else if (CheckCollisionPointRec(mouse, xeyesRect)) {
+                if (!xeyes_open) {
+                    xeyes_open = 1;
+                    last_clicked = WIN_XEYES;
                 }
             } else if (CheckCollisionPointRec(mouse, aboutRect)) {
-            } else if (CheckCollisionPointRec(mouse, utilitiesRect)) {
-                // Open Utilities window (larger by default so tiles fit)
-                utilities_open = 1;
-                utilities_workspace = workspace; /* show utilities on current workspace */
-                utilitiesWin.width = 520;
-                utilitiesWin.height = 360;
-                utilitiesWin.x = (screenWidth - utilitiesWin.width) / 2;
-                utilitiesWin.y = (screenHeight - utilitiesWin.height) / 2;
-            } else if (CheckCollisionPointRec(mouse, exitRect)) {
-                printf("DEBUG: Exit clicked at frame %d\n", frameCount);
+                // Print to console and open about window
+                printf("About X11: WNUOS GUI X11 WM: FVWM 3.x Made In: The C Programming Language Made With: raylib 5.5\n");
                 fflush(stdout);
+                if (!about_open) {
+                    about_open = 1;
+                }
+            } else if (CheckCollisionPointRec(mouse, exitRect)) {
                 running = 0;
             }
             showContextMenu = 0;
         }
-        // Handle click on terminal icon to launch or restore shell window
-        if ((terminal_minimized || !terminal_open) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            Vector2 mouse = GetMousePosition();
-            if (mouse.x >= icon_x && mouse.x <= icon_x + icon_w &&
-                mouse.y >= icon_y && mouse.y <= icon_y + icon_h) {
-                if (terminal_minimized) {
-                    // Restore window without restarting shell
-                    terminal_minimized = 0;
-                    focused_window = WIN_TERM; last_clicked = WIN_TERM;
-                } else {
-                    // Only open terminal, never close window
+
+        // Handle icon clicks
+        Vector2 mouse = GetMousePosition();
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            // Terminal icon
+            Rectangle termIconRect = {(float)term_icon_x, (float)icon_y, (float)icon_w, (float)icon_h};
+            if (CheckCollisionPointRec(mouse, termIconRect)) {
+                if (!terminal_open) {
                     terminal_open = 1;
-                    if (!shell) shell = CreateChildProc();
-                    LaunchShell(shell, "\"C:\\WNU\\WNU OS\\wnuos.exe\"");
-                    term_workspace = workspace; /* assign terminal to current workspace when launched from icon */
-                    lineCount = 0;
-                    inputLen = 0;
-                    inputLine[0] = '\0';
-                }
-            }
-        }
-
-        // Handle clicks on additional minimized icons (xclock/utilities) placed next to terminal icon
-        {
-            int minIconX = icon_x + icon_w + 24;
-            int minIconY = icon_y;
-            int minIconW = (int)(xclocklogo.width * iconScale);
-            int minIconH = (int)(xclocklogo.height * iconScale);
-            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-                Vector2 mm = GetMousePosition();
-                if (xclock_minimized) {
-                    Rectangle r = { (float)minIconX, (float)minIconY, (float)minIconW, (float)minIconH };
-                    if (CheckCollisionPointRec(mm, r)) { xclock_minimized = 0; xclock_open = 1; xclock_workspace = workspace; focused_window = WIN_XCLOCK; last_clicked = WIN_XCLOCK; }
-                    minIconX += minIconW + 12;
-                }
-                if (utilities_minimized) {
-                    Rectangle r2 = { (float)minIconX, (float)minIconY, (float)minIconW, (float)minIconH };
-                    if (CheckCollisionPointRec(mm, r2)) { utilities_minimized = 0; utilities_open = 1; utilities_workspace = workspace; focused_window = WIN_UTILS; last_clicked = WIN_UTILS; }
-                }
-            }
-        }
-
-        // Terminal window dragging, close and minimize button handling
-        if (terminal_open) {
-            Vector2 m = GetMousePosition();
-            int border = (int)(screenWidth * 0.002f);
-            int titleH = (int)(termWin.height * 0.07f);
-            int closeBtnSz = titleH - 4;
-            int closeBtnX = (int)(termWin.x + termWin.width - closeBtnSz - border);
-            int closeBtnY = (int)(termWin.y + border + 2);
-            Rectangle closeBtn = { (float)closeBtnX, (float)closeBtnY, (float)closeBtnSz, (float)closeBtnSz };
-            int minBtnX = closeBtnX - closeBtnSz - 4;
-            if (minBtnX < termWin.x + border) minBtnX = (int)(termWin.x + border);
-            Rectangle minBtn = { (float)minBtnX, (float)closeBtnY, (float)closeBtnSz, (float)closeBtnSz };
-            close_hover = CheckCollisionPointRec(m, closeBtn);
-            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-                if (CheckCollisionPointRec(m, closeBtn)) {
-                    terminal_open = 0;
-                    if (shell) { CloseShell(shell); DestroyChildProc(shell); shell = NULL; }
-                    if (last_clicked == WIN_TERM) last_clicked = -1;
-                    if (focused_window == WIN_TERM) focused_window = -1;
-                } else if (CheckCollisionPointRec(m, minBtn)) {
-                    terminal_minimized = 1;
-                } else if (CheckCollisionPointRec(m, (Rectangle){ termWin.x, termWin.y, termWin.width, (float)titleH })) {
-                    dragging = 1;
-                    dragOffset.x = m.x - termWin.x;
-                    dragOffset.y = m.y - termWin.y;
+                    if (!shell) {
+                        shell = CreateChildProc();
+                        LaunchShell(shell, "C:\\WNU\\WNU OS\\wnuos.exe");
+                    }
                     last_clicked = WIN_TERM;
-                    focused_window = WIN_TERM;
-                } else {
-                    Rectangle resizeHandle = { termWin.x + termWin.width - 18, termWin.y + termWin.height - 18, 18, 18 };
-                    if (CheckCollisionPointRec(m, resizeHandle)) {
-                        term_resizing = 1; last_clicked = WIN_TERM; focused_window = WIN_TERM;
-                    }
                 }
             }
-            if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) dragging = 0;
-            if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) term_resizing = 0;
-            if (dragging) {
-                termWin.x = m.x - dragOffset.x;
-                termWin.y = m.y - dragOffset.y;
-            }
-            if (term_resizing) {
-                Vector2 rm = GetMousePosition();
-                float newW = rm.x - termWin.x; if (newW < 160) newW = 160; if (newW > screenWidth - termWin.x) newW = screenWidth - termWin.x - 8;
-                float newH = rm.y - termWin.y; if (newH < 120) newH = 120; if (newH > screenHeight - termWin.y) newH = screenHeight - termWin.y - 8;
-                termWin.width = newW; termWin.height = newH;
-            }
-        }
-
-    // Read real shell output and append to terminal buffer
-    if (terminal_open && shell) {
-            char chunk[READ_CHUNK_SIZE];
-            double __r_t0 = GetTime();
-            int got = ReadShellOutput(shell, chunk, sizeof(chunk));
-            double __r_t1 = GetTime();
-            if ((__r_t1 - __r_t0) > 0.05) {
-            }
-            if (got > 0) {
-                int start = 0;
-                for (int i = 0; i < got; i++) {
-                    if (chunk[i] == '\r') continue;
-                    if (chunk[i] == '\n') {
-                        int len = i - start;
-                        if (len > 0) {
-                            int copyLen = (len < TERM_MAX_COLUMNS - 1) ? len : (TERM_MAX_COLUMNS - 1);
-                            if (lineCount < TERM_MAX_LINES) {
-                                memcpy(lines[lineCount], &chunk[start], copyLen);
-                                lines[lineCount][copyLen] = '\0';
-                                lineCount++;
-                            } else {
-                                memmove(lines, lines + 1, sizeof(lines[0]) * (TERM_MAX_LINES - 1));
-                                int copyLen2 = (len < TERM_MAX_COLUMNS - 1) ? len : (TERM_MAX_COLUMNS - 1);
-                                memcpy(lines[TERM_MAX_LINES - 1], &chunk[start], copyLen2);
-                                lines[TERM_MAX_LINES - 1][copyLen2] = '\0';
-                            }
-                        } else {
-                            if (lineCount < TERM_MAX_LINES) {
-                                lines[lineCount][0] = '\0';
-                                lineCount++;
-                            }
-                        }
-                        start = i + 1;
-                    }
-                }
-                if (start < got) {
-                    int len = got - start;
-                    int copyLen = (len < TERM_MAX_COLUMNS - 1) ? len : (TERM_MAX_COLUMNS - 1);
-                    if (lineCount == 0 || lines[lineCount - 1][0] == '\0') {
-                        if (lineCount < TERM_MAX_LINES) {
-                            memcpy(lines[lineCount], &chunk[start], copyLen);
-                            lines[lineCount][copyLen] = '\0';
-                            lineCount++;
-                        }
-                    } else {
-                        int curLen = (int)strlen(lines[lineCount - 1]);
-                        int space  = TERM_MAX_COLUMNS - 1 - curLen;
-                        int append = (copyLen < space) ? copyLen : space;
-                        memcpy(lines[lineCount - 1] + curLen, &chunk[start], append);
-                        lines[lineCount - 1][curLen + append] = '\0';
-                    }
+            
+            // Calculator icon
+            Rectangle calcIconRect = {(float)calc_icon_x, (float)icon_y, (float)icon_w, (float)icon_h};
+            if (CheckCollisionPointRec(mouse, calcIconRect)) {
+                if (!xcalc_open) {
+                    xcalc_open = 1;
+                    last_clicked = WIN_XCALC;
                 }
             }
-        }
-
-        // Keyboard input into terminal (always active when terminal is open)
-        if (terminal_open) {
-            int c;
-            char tempInput[TERM_MAX_COLUMNS];
-            while ((c = GetCharPressed()) > 0) {
-                if (c >= 32 && c < 127) {
-                    if (inputLen < TERM_MAX_COLUMNS - 1) {
-                        inputLine[inputLen++] = (char)c;
-                        inputLine[inputLen] = '\0';
-                    }
-                }
-            }
-            // Check for ENTER using IsKeyPressed
-            if (IsKeyPressed(KEY_ENTER)) {
-                // Store input in temp before clearing
-                strncpy(tempInput, inputLine, TERM_MAX_COLUMNS-1);
-                tempInput[TERM_MAX_COLUMNS-1] = '\0';
-                if (shell) {
-                    char toSend[TERM_MAX_COLUMNS + 2];
-                    int sendLen = snprintf(toSend, sizeof(toSend), "%s\r\n", inputLine);
-                    WriteShellInput(shell, toSend, sendLen);
-                }
-                inputLen = 0;
-                inputLine[0] = '\0';
-                // Always append tempInput to buffer after clearing
-                if (lineCount < TERM_MAX_LINES) {
-                    int maxPrompt = TERM_MAX_COLUMNS - 2;
-                    snprintf(lines[lineCount], TERM_MAX_COLUMNS, "> %.*s", maxPrompt, tempInput);
-                    lineCount++;
-                }
-            }
-            if (IsKeyPressed(KEY_BACKSPACE)) {
-                if (inputLen > 0) {
-                    inputLen--;
-                    inputLine[inputLen] = '\0';
-                }
-            }
-        }
-        
-        double __frame_t0 = GetTime();
-        // Poll input/events to keep window responsive
-        // glfwPollEvents(); // Not needed with raylib's main loop
-
-    // Workspace indicator (center, dynamic sizing)
-    // FVWM-style pager (center) - draw small boxes for each workspace
-    int pagerW = workspaceCount * (menuBtnH + 8);
-    int pagerX = (screenWidth - pagerW) / 2;
-    int pagerY = menuBtnY;
-    for (int p = 1; p <= workspaceCount; p++) {
-        int bx = pagerX + (p-1) * (menuBtnH + 8);
-        int by = pagerY;
-        Rectangle brect = { (float)bx, (float)by, (float)menuBtnH, (float)menuBtnH };
-        Color fill = (p == workspace) ? (Color){120,160,220,255} : (Color){80,80,120,255};
-        DrawRectangleRec(brect, fill);
-        DrawRectangleLinesEx(brect, 1, (Color){40,40,60,255});
-        char numbuf[4];
-        snprintf(numbuf, sizeof(numbuf), "%d", p);
-        DrawTextEx(guiFont, numbuf, (Vector2){bx + menuBtnH/4.0f, by + menuBtnH/6.0f}, (float)(menuBtnH/2), 0.0f, x11_white);
-        // click to switch workspace
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            Vector2 _m = GetMousePosition();
-            if (CheckCollisionPointRec(_m, brect)) {
-                workspace = p;
-            }
-        }
-    }
-    // Number-key switching (1..workspaceCount)
-    for (int k = 1; k <= workspaceCount; k++) {
-        int key = KEY_ONE + (k-1); // KEY_ONE..KEY_FOUR
-        if (IsKeyPressed(key)) workspace = k;
-    }
-
-    // Alt+Number: move focused window to workspace k
-    for (int k = 1; k <= workspaceCount; k++) {
-        int key = KEY_ONE + (k-1);
-        if ((IsKeyPressed(key)) && (IsKeyDown(KEY_LEFT_ALT) || IsKeyDown(KEY_RIGHT_ALT))) {
-            if (focused_window == WIN_TERM) { term_workspace = k; }
-            else if (focused_window == WIN_XCLOCK) { xclock_workspace = k; }
-            else if (focused_window == WIN_UTILS) { utilities_workspace = k; }
-        }
-    }
-
-    // Ctrl+S toggles sticky flag for focused window (appears on all workspaces)
-    if (IsKeyPressed(KEY_S) && (IsKeyDown(KEY_LEFT_CONTROL) || IsKeyDown(KEY_RIGHT_CONTROL))) {
-        if (focused_window == WIN_TERM) term_sticky = !term_sticky;
-        else if (focused_window == WIN_XCLOCK) xclock_sticky = !xclock_sticky;
-        else if (focused_window == WIN_UTILS) utilities_sticky = !utilities_sticky;
-    }
-
-    // Clock (right, dynamic sizing)
-    time_t now = time(NULL);
-    struct tm* t = localtime(&now);
-    char clockStr[32];
-    strftime(clockStr, sizeof(clockStr), "%H:%M:%S", t);
-    int clockFontSz = topBarH/2;
-    Vector2 clkSz = MeasureTextEx(guiFont, clockStr, (float)clockFontSz, 0.0f);
-    int clockTextW = (int)clkSz.x;
-    int clockW = clockTextW + 32;
-    int clockH = menuBtnH;
-    int clockX = screenWidth - clockW - 16, clockY = menuBtnY;
-    DrawRectangle(clockX, clockY, clockW, clockH, (Color){80, 80, 120, 255});
-    DrawTextEx(guiFont, clockStr, (Vector2){(float)(clockX + 16), (float)(clockY + (clockH-clockFontSz)/2)}, (float)clockFontSz, 0.0f, x11_white);
-    // Click the clock area to toggle xclock window
-    if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-        Vector2 _m = GetMousePosition();
-        Rectangle clkRect = { (float)clockX, (float)clockY, (float)clockW, (float)clockH };
-        if (CheckCollisionPointRec(_m, clkRect)) {
-            xclock_open = !xclock_open;
-            if (xclock_open) {
-                xclock_workspace = workspace; /* assign xclock to current workspace when opened */
-                // Initialize xclock window size and position near the top-right, but below top bar
-                xclockWin.width = 220;
-                xclockWin.height = 220;
-                xclockWin.x = screenWidth - xclockWin.width - 32;
-                xclockWin.y = topBarH + 48;
-            }
-        }
-    }
-    
-    // FVWM logo (left of menu)
-    float logoScaleBar = 0.18f;
-    int logoBarW = (int)(logo.width * logoScaleBar);
-    (void)logoBarW; // placeholder, used in some layouts; silence unused warning
-    (void)contextMenuHover; // reserved for future hover state
-    int logoBarH = (int)(logo.height * logoScaleBar);
-    int logoBarX = menuBtnX + menuBtnW + 8;
-    int logoBarY = (topBarH - logoBarH) / 2;
-    DrawTextureEx(logo, (Vector2){(float)logoBarX, (float)logoBarY}, 0.0f, logoScaleBar, x11_white);
-
-    // (Global shortcuts removed) — shortcuts are available only inside the Utilities window.
-
-        // Desktop background
-    DrawRectangle(0, topBarH, screenWidth, screenHeight - topBarH, x11_gray);
-    DrawTextEx(guiFont, "Welcome to X11 Desktop", (Vector2){(float)(screenWidth*0.06f), (float)(screenHeight*0.08f)}, (float)(topBarH*0.7f), 0.0f, x11_title);
-
-        // Terminal icon
-    DrawTextureEx(xtermlogo, (Vector2){(float)icon_x, (float)icon_y}, 0.0f, iconScale, x11_white);
-    DrawTextEx(guiFont, "xterm", (Vector2){(float)icon_x, (float)(icon_y + icon_h + 8)}, 18.0f, 0.0f, x11_title);
-
-    // Draw xclock window if open AND on current workspace (and not minimized)
-    if (xclock_open && !xclock_minimized && (xclock_workspace == workspace || xclock_sticky)) {
-        // Window background and border
-        int xb = (int)(screenWidth * 0.002f);
-        DrawRectangle((int)xclockWin.x, (int)xclockWin.y, (int)xclockWin.width, (int)xclockWin.height, (Color){80,80,120,255});
-        DrawRectangle((int)xclockWin.x + xb, (int)xclockWin.y + xb, (int)xclockWin.width - 2*xb, (int)xclockWin.height - 2*xb, x11_white);
-        // Title bar
-        int xTitleH = 28;
-        DrawRectangle((int)xclockWin.x + xb, (int)xclockWin.y + xb, (int)xclockWin.width - 2*xb, xTitleH, (Color){60,60,80,255});
-    DrawTextEx(guiFont, "xclock", (Vector2){(float)xclockWin.x + xb + 8, (float)xclockWin.y + xb + 6}, 14.0f, 0.0f, x11_white);
-        // Close button
-        int xCloseSz = xTitleH - 6;
-        int xCloseX = (int)(xclockWin.x + xclockWin.width - xCloseSz - xb - 4);
-        int xCloseY = (int)(xclockWin.y + xb + 3);
-        xclock_close_hover = CheckCollisionPointRec(GetMousePosition(), (Rectangle){(float)xCloseX,(float)xCloseY,(float)xCloseSz,(float)xCloseSz});
-        DrawRectangle(xCloseX, xCloseY, xCloseSz, xCloseSz, xclock_close_hover ? RED : (Color){120,120,120,255});
-    DrawTextEx(guiFont, "X", (Vector2){(float)(xCloseX + 4), (float)(xCloseY + 2)}, 14.0f, 0.0f, x11_white);
-
-        // Handle dragging and close interactions for xclock window
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            Vector2 _m = GetMousePosition();
-            Rectangle titleRect = {(float)xclockWin.x + xb, (float)xclockWin.y + xb, (float)xclockWin.width - 2*xb, (float)xTitleH};
-            if (CheckCollisionPointRec(_m, (Rectangle){(float)xCloseX,(float)xCloseY,(float)xCloseSz,(float)xCloseSz})) {
-                xclock_open = 0;
-                    if (last_clicked == WIN_XCLOCK) last_clicked = -1;
-            } else if (CheckCollisionPointRec(_m, titleRect)) {
-                xclock_dragging = 1;
-                xclockDragOffset.x = _m.x - xclockWin.x;
-                xclockDragOffset.y = _m.y - xclockWin.y;
+            
+            // Clock icon
+            Rectangle clockIconRect = {(float)clock_icon_x, (float)icon_y, (float)icon_w, (float)icon_h};
+            if (CheckCollisionPointRec(mouse, clockIconRect)) {
+                if (!xclock_open) {
+                    xclock_open = 1;
                     last_clicked = WIN_XCLOCK;
+                }
+            }
+            
+            // Utilities icon
+            Rectangle utilitiesIconRect = {(float)utils_icon_x, (float)icon_y, (float)icon_w, (float)icon_h};
+            if (CheckCollisionPointRec(mouse, utilitiesIconRect)) {
+                if (!utilities_open) {
+                    utilities_open = 1;
+                    last_clicked = WIN_UTILITIES;
+                }
+            }
+            
+            // XEyes icon
+            Rectangle xeyesIconRect = {(float)xeyes_icon_x, (float)icon_y, (float)icon_w, (float)icon_h};
+            if (CheckCollisionPointRec(mouse, xeyesIconRect)) {
+                if (!xeyes_open) {
+                    xeyes_open = 1;
+                    last_clicked = WIN_XEYES;
+                }
             }
         }
-        if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) xclock_dragging = 0;
-        if (xclock_dragging) {
-            Vector2 _m = GetMousePosition();
-            xclockWin.x = _m.x - xclockDragOffset.x;
-            xclockWin.y = _m.y - xclockDragOffset.y;
-        }
-        // resize handle for xclock
-        Rectangle xResize = { xclockWin.x + xclockWin.width - 18, xclockWin.y + xclockWin.height - 18, 18, 18 };
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            if (CheckCollisionPointRec(GetMousePosition(), xResize)) { xclock_resizing = 1; last_clicked = WIN_XCLOCK; focused_window = WIN_XCLOCK; }
-        }
-        if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) xclock_resizing = 0;
-        if (xclock_resizing) {
-            Vector2 rm = GetMousePosition();
-            float newW = rm.x - xclockWin.x; if (newW < 80) newW = 80; if (newW > screenWidth - xclockWin.x) newW = screenWidth - xclockWin.x - 8;
-            float newH = rm.y - xclockWin.y; if (newH < 80) newH = 80; if (newH > screenHeight - xclockWin.y) newH = screenHeight - xclockWin.y - 8;
-            xclockWin.width = newW; xclockWin.height = newH;
-        }
 
-        // Draw analog clock face centered in the client area
-        float cx = xclockWin.x + xclockWin.width/2.0f;
-        float cy = xclockWin.y + xclockWin.height/2.0f + 8;
-        float radius = (xclockWin.width < xclockWin.height ? xclockWin.width : xclockWin.height) * 0.35f;
-        DrawCircle((int)cx, (int)cy, radius, (Color){18,18,18,255});
-        DrawCircleLines((int)cx, (int)cy, radius, (Color){200,200,200,255});
-        // Hands
-        time_t nowt = time(NULL);
-        struct tm* tmnow = localtime(&nowt);
-        float sec = tmnow->tm_sec;
-        float min = tmnow->tm_min + sec/60.0f;
-        float hr  = (tmnow->tm_hour % 12) + min/60.0f;
-        float angSec = (sec / 60.0f) * 2*PI - PI/2;
-        float angMin = (min / 60.0f) * 2*PI - PI/2;
-        float angHr  = (hr  / 12.0f) * 2*PI - PI/2;
-        DrawLine((int)cx, (int)cy, (int)(cx + cosf(angHr)*(radius*0.5f)), (int)(cy + sinf(angHr)*(radius*0.5f)), (Color){220,220,220,255});
-        DrawLine((int)cx, (int)cy, (int)(cx + cosf(angMin)*(radius*0.75f)), (int)(cy + sinf(angMin)*(radius*0.75f)), (Color){200,200,200,255});
-        DrawLine((int)cx, (int)cy, (int)(cx + cosf(angSec)*(radius*0.9f)), (int)(cy + sinf(angSec)*(radius*0.9f)), (Color){255,0,0,255});
-    }
-    // Draw xclock minimized icon if iconified
-    if (xclock_minimized) {
-        int minIconX = icon_x + icon_w + 24;
-        int minIconY = icon_y;
-        DrawTextureEx(xclocklogo, (Vector2){(float)minIconX, (float)minIconY}, 0.0f, iconScale, x11_white);
-        DrawTextEx(guiFont, "xclock", (Vector2){(float)minIconX, (float)(minIconY + (int)(xclocklogo.height*iconScale) + 4)}, 14.0f, 0.0f, x11_title);
-    }
-
-    // Draw Utilities window if open AND on current workspace (and not minimized)
-    if (utilities_open && !utilities_minimized && (utilities_workspace == workspace || utilities_sticky)) {
-        int ub = (int)(screenWidth * 0.002f);
-        DrawRectangle((int)utilitiesWin.x, (int)utilitiesWin.y, (int)utilitiesWin.width, (int)utilitiesWin.height, (Color){80,80,120,255});
-        DrawRectangle((int)utilitiesWin.x + ub, (int)utilitiesWin.y + ub, (int)utilitiesWin.width - 2*ub, (int)utilitiesWin.height - 2*ub, x11_white);
-        int uTitleH = 28;
-        DrawRectangle((int)utilitiesWin.x + ub, (int)utilitiesWin.y + ub, (int)utilitiesWin.width - 2*ub, uTitleH, (Color){60,60,80,255});
-    DrawTextEx(guiFont, "Utilities", (Vector2){(float)utilitiesWin.x + ub + 8, (float)utilitiesWin.y + ub + 6}, 14.0f, 0.0f, x11_white);
-        int uCloseSz = uTitleH - 6;
-        int uCloseX = (int)(utilitiesWin.x + utilitiesWin.width - uCloseSz - ub - 4);
-        int uCloseY = (int)(utilitiesWin.y + ub + 3);
-        utilities_close_hover = CheckCollisionPointRec(GetMousePosition(), (Rectangle){(float)uCloseX,(float)uCloseY,(float)uCloseSz,(float)uCloseSz});
-        DrawRectangle(uCloseX, uCloseY, uCloseSz, uCloseSz, utilities_close_hover ? RED : (Color){120,120,120,255});
-    DrawTextEx(guiFont, "X", (Vector2){(float)(uCloseX + 4), (float)(uCloseY + 2)}, 14.0f, 0.0f, x11_white);
-
-        // Desktop-style shortcuts anchored top-left inside Utilities window (only visible here)
-        {
-            Vector2 _m2 = GetMousePosition();
-            // Try to fit all icons on a single row by computing a uniform scale
-                const char* labels[3] = { "Clear Terminal", "xclock", "xcalc" };
-                Texture2D* icons[3] = { &xtermlogo, &xclocklogo, &xcalclogo };
-            int nshort = 3;
-            float baseScale = 0.24f; // preferred nice size
-            int padding = 12;
-            int gap = 20;
-            int availableW = (int)(utilitiesWin.width - 2*padding);
-            if (availableW < 1) availableW = 1;
-
-            // compute max icon width at baseScale
-            int widths[3];
-            int heights[3];
-            for (int i = 0; i < nshort; i++) {
-                widths[i] = (int)(icons[i]->width * baseScale);
-                heights[i] = (int)(icons[i]->height * baseScale);
-            }
-            // total width needed with baseScale
-            int totalNeeded = -gap; // compensate first loop
-            int maxH = 0;
-            for (int i = 0; i < nshort; i++) { totalNeeded += widths[i] + gap; if (heights[i] > maxH) maxH = heights[i]; }
-
-            float uniformScale = baseScale;
-            if (totalNeeded > availableW) {
-                // shrink uniformly so everything fits one row
-                float shrink = (float)availableW / (float)totalNeeded;
-                if (shrink < 0.5f) shrink = 0.5f; // avoid too tiny
-                uniformScale = baseScale * shrink;
-                for (int i = 0; i < nshort; i++) {
-                    widths[i] = (int)(icons[i]->width * uniformScale);
-                    heights[i] = (int)(icons[i]->height * uniformScale);
-                }
-                // recompute totalNeeded
-                totalNeeded = -gap; maxH = 0;
-                for (int i = 0; i < nshort; i++) { totalNeeded += widths[i] + gap; if (heights[i] > maxH) maxH = heights[i]; }
-            }
-
-            // If still doesn't fit (very narrow), compute columns instead
-            int leftX = (int)(utilitiesWin.x + padding);
-            int topY = (int)(utilitiesWin.y + ub + uTitleH + 12);
-            Rectangle rects[3];
-            if (totalNeeded <= availableW) {
-                // left-align the row inside the utilities client area (top-left)
-                int x = leftX;
-                for (int i = 0; i < nshort; i++) {
-                    rects[i] = (Rectangle){ (float)x, (float)topY, (float)widths[i], (float)heights[i] };
-                    x += widths[i] + gap;
-                }
-            } else {
-                // place in columns (one per row) with no overlap
-                int x = leftX;
-                int y = topY;
-                for (int i = 0; i < nshort; i++) {
-                    rects[i] = (Rectangle){ (float)x, (float)y, (float)widths[i], (float)heights[i] };
-                    y += heights[i] + 28; // space for label
-                    // clamp vertically to utilities client area
-                    int maxY = (int)(utilitiesWin.y + utilitiesWin.height - padding - heights[i] - 8);
-                    if (rects[i].y > maxY) rects[i].y = maxY;
-                }
-            }
-
-            // Draw icons and labels; use uniformScale for texture draw
-            for (int i = 0; i < nshort; i++) {
-                int hover = CheckCollisionPointRec(_m2, rects[i]);
-                if (hover) DrawRectangleRec(rects[i], (Color){40,60,180,255});
-                DrawTextureEx(*icons[i], (Vector2){rects[i].x, rects[i].y}, 0.0f, uniformScale, x11_white);
-                int labFont = 14;
-                int maxLabelWidth = (int)(utilitiesWin.width - 2*padding);
-                if (maxLabelWidth < 32) maxLabelWidth = 32;
-                Vector2 tempSz = MeasureTextEx(guiFont, labels[i], (float)labFont, 0.0f);
-                int w = (int)tempSz.x;
-                // Shrink font until it fits or reach a minimum size
-                while (w > maxLabelWidth && labFont > 8) {
-                    labFont--;
-                    tempSz = MeasureTextEx(guiFont, labels[i], (float)labFont, 0.0f);
-                    w = (int)tempSz.x;
-                }
-                // If still too wide, truncate with ellipsis
-                char labBuf[128];
-                strncpy(labBuf, labels[i], sizeof(labBuf)-1);
-                labBuf[sizeof(labBuf)-1] = '\0';
-                if (w > maxLabelWidth) {
-                    int len = (int)strlen(labBuf);
-                    // reserve 3 chars for '...'
-                    for (int cut = len; cut > 0; cut--) {
-                        labBuf[cut] = '\0';
-                        // append ellipsis temporarily
-                        if (cut >= 3) {
-                            labBuf[cut-3] = '\0';
-                            // build truncated string
-                            char tmp[128];
-                            snprintf(tmp, sizeof(tmp), "%s...", labels[i]);
-                            // tmp currently wrong; instead copy first cut-3 chars
-                        }
-                    }
-                    // Simpler truncation: binary shrink by characters
-                    int keep = (int)strlen(labels[i]);
-                    while (keep > 0) {
-                        keep--;
-                        char tmp[128];
-                        if (keep > 3) {
-                            snprintf(tmp, sizeof(tmp), "%.*s...", keep-3, labels[i]);
-                        } else {
-                            snprintf(tmp, sizeof(tmp), "%.*s", keep, labels[i]);
-                        }
-                        Vector2 twv = MeasureTextEx(guiFont, tmp, (float)labFont, 0.0f);
-                        int tw = (int)twv.x;
-                        if (tw <= maxLabelWidth) {
-                            strncpy(labBuf, tmp, sizeof(labBuf)-1);
-                            labBuf[sizeof(labBuf)-1] = '\0';
-                            w = tw;
-                            break;
-                        }
-                    }
-                } else {
-                    // fits, copy original
-                    strncpy(labBuf, labels[i], sizeof(labBuf)-1);
-                    labBuf[sizeof(labBuf)-1] = '\0';
-                }
-
-                int tx = (int)rects[i].x + ((int)rects[i].width)/2 - w/2;
-                // clamp label to utilities client area
-                int minTx = (int)(utilitiesWin.x + padding);
-                int maxTx = (int)(utilitiesWin.x + utilitiesWin.width - padding - w);
-                if (tx < minTx) tx = minTx;
-                if (tx > maxTx) tx = maxTx;
-                int ty = (int)(rects[i].y + rects[i].height + 8);
-                DrawRectangle(tx - 6, ty - 4, w + 12, labFont + 6, (Color){20,20,30,180});
-                DrawTextEx(guiFont, labBuf, (Vector2){(float)(tx + 1), (float)(ty + 1)}, (float)labFont, 0.0f, (Color){0,0,0,160});
-                DrawTextEx(guiFont, labBuf, (Vector2){(float)tx, (float)ty}, (float)labFont, 0.0f, x11_white);
-            }
-
-            // Click handling — hitboxes match icon rects
-            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-                Vector2 mclick = GetMousePosition();
-                Rectangle titleRect = {(float)utilitiesWin.x + ub, (float)utilitiesWin.y + ub, (float)utilitiesWin.width - 2*ub, (float)uTitleH};
-                if (CheckCollisionPointRec(mclick, (Rectangle){(float)uCloseX,(float)uCloseY,(float)uCloseSz,(float)uCloseSz})) {
-                    utilities_open = 0;
-                        if (last_clicked == WIN_UTILS) last_clicked = -1;
-                } else if (CheckCollisionPointRec(mclick, titleRect)) {
-                    utilities_dragging = 1;
-                    utilitiesDragOffset.x = mclick.x - utilitiesWin.x;
-                    utilitiesDragOffset.y = mclick.y - utilitiesWin.y;
-                        last_clicked = WIN_UTILS;
-                } else {
-                    for (int i = 0; i < nshort; i++) {
-                        if (CheckCollisionPointRec(mclick, rects[i])) {
-                            if (strcmp(labels[i], "xclock") == 0) {
-                                xclock_open = 1;
-                                xclock_workspace = workspace;
-                                xclockWin.width = 220; xclockWin.height = 220;
-                                xclockWin.x = (screenWidth - xclockWin.width) / 2;
-                                xclockWin.y = (screenHeight - xclockWin.height) / 2;
-                            } else if (strcmp(labels[i], "Clear Terminal") == 0) {
-                                lineCount = 0;
-                            } else if (strcmp(labels[i], "xcalc") == 0) {
-                                // Open a simple xcalc window centered on the screen
-                                xcalc_open = 1;
-                                xcalc_workspace = workspace; /* assign to current workspace */
-                                xcalcWin.width = 300;
-                                xcalcWin.height = 300;
-                                xcalcWin.x = (screenWidth - xcalcWin.width) / 2;
-                                xcalcWin.y = topBarH + 64;
-                                // Removed debug print for xcalc open
-                            }
-                        }
-                    }
-                }
-            }
-            if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) utilities_dragging = 0;
-            if (utilities_dragging) {
-                Vector2 nm = GetMousePosition();
-                utilitiesWin.x = nm.x - utilitiesDragOffset.x;
-                utilitiesWin.y = nm.y - utilitiesDragOffset.y;
-            }
-            // resize handle for utilities
-            Rectangle uResize = { utilitiesWin.x + utilitiesWin.width - 18, utilitiesWin.y + utilitiesWin.height - 18, 18, 18 };
-            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-                if (CheckCollisionPointRec(GetMousePosition(), uResize)) { utilities_resizing = 1; last_clicked = WIN_UTILS; focused_window = WIN_UTILS; }
-            }
-            if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) utilities_resizing = 0;
-            if (utilities_resizing) {
-                Vector2 rm = GetMousePosition();
-                float newW = rm.x - utilitiesWin.x; if (newW < 160) newW = 160; if (newW > screenWidth - utilitiesWin.x) newW = screenWidth - utilitiesWin.x - 8;
-                float newH = rm.y - utilitiesWin.y; if (newH < 120) newH = 120; if (newH > screenHeight - utilitiesWin.y) newH = screenHeight - utilitiesWin.y - 8;
-                utilitiesWin.width = newW; utilitiesWin.height = newH;
-            }
-        }
-    // Draw xcalc (delegated to reusable widget)
-    draw_xcalc_widget(&xcalcWin, &xcalc_open, &xcalc_minimized, &xcalc_resizing, &xcalc_close_hover,
-                      &xcalc_workspace, &xcalc_sticky, guiFont, xcalclogo,
-                      &last_clicked, WIN_XCALC,
-                      &focused_window, workspace, screenWidth, screenHeight);
-    // Draw utilities minimized icon if iconified
-    if (utilities_minimized) {
-        int minIconX = icon_x + icon_w + 24;
-        int minIconY = icon_y;
-        if (xclock_minimized) minIconX += (int)(xclocklogo.width * iconScale) + 12;
-        DrawTextureEx(xtermlogo, (Vector2){(float)minIconX, (float)minIconY}, 0.0f, iconScale, x11_white);
-        DrawTextEx(guiFont, "Utilities", (Vector2){(float)minIconX, (float)(minIconY + (int)(xtermlogo.height*iconScale) + 4)}, 14.0f, 0.0f, x11_title);
-    }
-
-        // Draw context menu if active
+        // Draw FWVM 3.x flat context menu
         if (showContextMenu) {
             int menuW = 180, menuH = 32;
             int menuX = (int)contextMenuPos.x;
             int menuY = (int)contextMenuPos.y;
-            int totalH = menuH * 4;
+            
+            // Clamp menu to screen
             if (menuX + menuW > screenWidth) menuX = screenWidth - menuW - 8;
-            if (menuY + totalH > screenHeight) menuY = screenHeight - totalH - 8;
-            Color menuBg = (Color){80, 80, 120, 255};
-            Color menuBorder = (Color){60, 60, 80, 255};
-            Color menuHighlight = (Color){40, 60, 180, 255};
-            Vector2 mouse = GetMousePosition();
-            Rectangle xtermRect = {menuX, menuY, menuW, menuH};
-            Rectangle aboutRect = {menuX, menuY + menuH, menuW, menuH};
-            Rectangle utilitiesRect = {menuX, menuY + 2*menuH, menuW, menuH};
-            Rectangle exitRect  = {menuX, menuY + 3*menuH, menuW, menuH};
-            int hoverXterm = CheckCollisionPointRec(mouse, xtermRect);
-            int hoverAbout = CheckCollisionPointRec(mouse, aboutRect);
-            int hoverUtilities = CheckCollisionPointRec(mouse, utilitiesRect);
-            int hoverExit  = CheckCollisionPointRec(mouse, exitRect);
-            // Draw XTerm item
-            DrawRectangleRec(xtermRect, hoverXterm ? menuHighlight : menuBg);
-            DrawRectangleLines(menuX, menuY, menuW, menuH, menuBorder);
-            DrawTextEx(guiFont, "XTerm", (Vector2){(float)(menuX + 12), (float)(menuY + 7)}, 18.0f, 0.0f, x11_white);
-            // Draw About item
-            DrawRectangleRec(aboutRect, hoverAbout ? menuHighlight : menuBg);
-            DrawRectangleLines(menuX, menuY + menuH, menuW, menuH, menuBorder);
-            DrawTextEx(guiFont, "About X11 Desktop", (Vector2){(float)(menuX + 12), (float)(menuY + menuH + 7)}, 18.0f, 0.0f, x11_white);
-            // Draw Utilities item
-            DrawRectangleRec(utilitiesRect, hoverUtilities ? menuHighlight : menuBg);
-            DrawRectangleLines(menuX, menuY + 2*menuH, menuW, menuH, menuBorder);
-            DrawTextEx(guiFont, "Utilities", (Vector2){(float)(menuX + 12), (float)(menuY + 2*menuH + 7)}, 18.0f, 0.0f, x11_white);
-            // Draw Exit item
-            DrawRectangleRec(exitRect, hoverExit ? menuHighlight : menuBg);
-            DrawRectangleLines(menuX, menuY + 3*menuH, menuW, menuH, menuBorder);
-            DrawTextEx(guiFont, "Exit X11", (Vector2){(float)(menuX + 12), (float)(menuY + 3*menuH + 7)}, 18.0f, 0.0f, x11_white);
+            if (menuY + menuH * 5 > screenHeight) menuY = screenHeight - menuH * 5 - 8;
+            
+            // Modern flat menu styling
+            DrawRectangle(menuX, menuY, menuW, menuH * 5, fwvm_light_gray);
+            DrawRectangleLines(menuX, menuY, menuW, menuH * 5, fwvm_border);
+            
+            // Add subtle shadows for depth
+            DrawRectangle(menuX + 2, menuY + 2, menuW, menuH * 7, (Color){0, 0, 0, 50});
+            DrawRectangle(menuX, menuY, menuW, menuH * 7, fwvm_light_gray);
+            DrawRectangleLines(menuX, menuY, menuW, menuH * 7, fwvm_border);
+            
+            DrawTextEx(guiFont, "Terminal", (Vector2){(float)(menuX + 8), (float)(menuY + 8)}, 16, 0.0f, fwvm_dark_gray);
+            DrawTextEx(guiFont, "Calculator", (Vector2){(float)(menuX + 8), (float)(menuY + menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
+            DrawTextEx(guiFont, "Clock", (Vector2){(float)(menuX + 8), (float)(menuY + 2*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
+            DrawTextEx(guiFont, "Utilities", (Vector2){(float)(menuX + 8), (float)(menuY + 3*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
+            DrawTextEx(guiFont, "XEyes", (Vector2){(float)(menuX + 8), (float)(menuY + 4*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
+            DrawTextEx(guiFont, "About FWVM 3.x", (Vector2){(float)(menuX + 8), (float)(menuY + 5*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
+            DrawTextEx(guiFont, "Exit", (Vector2){(float)(menuX + 8), (float)(menuY + 6*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
         }
 
-        // Terminal window (show only on its assigned workspace)
-        if (terminal_open && !terminal_minimized && term_workspace == workspace) {
-            // FVWM-like window decorations
-            int border = (int)(screenWidth * 0.002f);
-            int titleH = (int)(termWin.height * 0.07f);
-            DrawRectangleRec(termWin, (Color){80, 80, 120, 255});
-            DrawRectangle((int)termWin.x + border, (int)termWin.y + border, (int)termWin.width - 2*border, (int)termWin.height - 2*border, x11_term_bg);
-            // Title bar (flat)
-            DrawRectangle((int)termWin.x + border, (int)termWin.y + border, (int)termWin.width - 2*border, titleH, (Color){60, 60, 80, 255});
-            DrawTextEx(guiFont, "xterm", (Vector2){(float)((int)termWin.x + 16), (float)((int)termWin.y + border + 8)}, (float)(titleH*0.6f), 0.0f, x11_white);
-            // Anchor close and minimize buttons to top-right
-            int closeBtnSz = titleH-4;
-            int closeBtnX = (int)(termWin.x + termWin.width - closeBtnSz - border);
-            int closeBtnY = (int)(termWin.y + border + 2);
-            // Ensure buttons stay inside window when resized
-            if (closeBtnX + closeBtnSz > termWin.x + termWin.width) closeBtnX = (int)(termWin.x + termWin.width - closeBtnSz - border);
-            if (closeBtnY + closeBtnSz > termWin.y + titleH) closeBtnY = (int)(termWin.y + border + 2);
-            DrawRectangle(closeBtnX, closeBtnY, closeBtnSz, closeBtnSz, close_hover ? RED : (Color){120, 120, 120, 255});
-            DrawTextEx(guiFont, "X", (Vector2){(float)(closeBtnX + 7), (float)(closeBtnY + 4)}, (float)(titleH*0.5f), 0.0f, x11_white);
-            // Minimize button always left of close
-            int minBtnSz = closeBtnSz;
-            int minBtnX = closeBtnX - minBtnSz - 4;
-            int minBtnY = closeBtnY;
-            if (minBtnX < termWin.x + border) minBtnX = (int)(termWin.x + border);
-            DrawRectangle(minBtnX, minBtnY, minBtnSz, minBtnSz, (Color){120, 120, 120, 255});
-            DrawTextEx(guiFont, "_", (Vector2){(float)(minBtnX + 10), (float)(minBtnY + 4)}, (float)(titleH*0.5f), 0.0f, x11_white);
-        // Terminal contents
-            int y = (int)(termWin.y + titleH + 12);
-            int x = (int)(termWin.x + 16);
-            int maxY = (int)(termWin.y + termWin.height - 36);
-            int first = 0;
-            int lineH = (int)(termWin.height * 0.045f);
-            int maxLinesOnScreen = (maxY - y) / lineH;
-            if (lineCount > maxLinesOnScreen) first = lineCount - maxLinesOnScreen;
-            for (int i = first; i < lineCount; i++) {
-                DrawTextEx(GetFontDefault(), lines[i], (Vector2){(float)x, (float)y}, (float)lineH, 1.0f, x11_term_fg);
-                y += lineH;
-                if (y > maxY) break;
+        // Draw FWVM 3.x flat terminal window
+        if (terminal_open && !terminal_minimized) {
+            int border = 1;
+            int titleH = 32;
+            
+            // Modern flat window frame with subtle shadow
+            DrawRectangle((int)termWin.x + 2, (int)termWin.y + 2, (int)termWin.width, (int)termWin.height, (Color){0, 0, 0, 60}); // Shadow
+            DrawRectangleRec(termWin, fwvm_border);
+            DrawRectangle((int)termWin.x + border, (int)termWin.y + border, 
+                         (int)termWin.width - 2*border, (int)termWin.height - 2*border, fwvm_term_bg);
+            
+            // Modern flat title bar
+            DrawRectangle((int)termWin.x + border, (int)termWin.y + border, 
+                         (int)termWin.width - 2*border, titleH, fwvm_taskbar);
+            DrawTextEx(guiFont, "FWVM Terminal 3.x", (Vector2){termWin.x + border + 12, termWin.y + border + 8}, 
+                      16, 0.0f, fwvm_white);
+            
+            // Modern flat close button
+            int closeBtnSz = titleH - 8;
+            int closeBtnX = (int)(termWin.x + termWin.width - closeBtnSz - border - 8);
+            int closeBtnY = (int)(termWin.y + border + 4);
+            DrawRectangle(closeBtnX, closeBtnY, closeBtnSz, closeBtnSz, (Color){232, 17, 35, 255}); // Windows red
+            DrawTextEx(guiFont, "×", (Vector2){(float)(closeBtnX + 4), (float)(closeBtnY + 2)}, 
+                      14, 0.0f, fwvm_white);
+            
+            // Terminal content area
+            DrawRectangle((int)termWin.x + border, (int)termWin.y + border + titleH, 
+                         (int)termWin.width - 2*border, (int)termWin.height - 2*border - titleH, fwvm_term_bg);
+            
+            // Terminal text with FWVM branding and WNU OS executable info (much bigger text)
+            DrawTextEx(guiFont, "FWVM Terminal v3.0", 
+                      (Vector2){termWin.x + 16, termWin.y + titleH + 16}, 24, 0.0f, fwvm_term_fg);
+            DrawTextEx(guiFont, "Flat Windows Virtual Machine", 
+                      (Vector2){termWin.x + 16, termWin.y + titleH + 46}, 20, 0.0f, fwvm_accent);
+            DrawTextEx(guiFont, "Running: C:\\WNU\\WNU OS\\wnuos.exe", 
+                      (Vector2){termWin.x + 16, termWin.y + titleH + 72}, 18, 0.0f, (Color){100, 200, 100, 255});
+            
+            // Read and display shell output if available (much bigger text with auto-clear)
+            static char terminalBuffer[4096] = {0};
+            static int bufferPos = 0;
+            static int lineCount = 0;
+            
+            // Handle clear terminal request
+            if (clear_terminal_requested) {
+                memset(terminalBuffer, 0, sizeof(terminalBuffer));
+                bufferPos = 0;
+                lineCount = 0;
+                clear_terminal_requested = 0;
             }
-            // Input prompt
-            int promptH = (int)(termWin.height * 0.055f);
-            DrawRectangle(x - 4, maxY + 8, (int)termWin.width - 32, promptH, x11_dkgray);
-            DrawTextEx(guiFont, "> ", (Vector2){(float)x, (float)(maxY + 10)}, (float)(promptH*0.7f), 0.0f, x11_white);
-            Vector2 promptSz = MeasureTextEx(guiFont, "> ", (float)(promptH*0.7f), 0.0f);
-            DrawTextEx(guiFont, inputLine, (Vector2){(float)(x + (int)promptSz.x), (float)(maxY + 10)}, (float)(promptH*0.7f), 0.0f, x11_white);
-            // Draw resize handle for terminal
-            DrawRectangle((int)(termWin.x + termWin.width - 18), (int)(termWin.y + termWin.height - 18), 18, 18, (Color){100,100,120,255});
-        }
-
-        // Draw the last-clicked window again (minimal, visual-only) so it overlaps others.
-        if (last_clicked == WIN_XCLOCK && xclock_open && xclock_workspace == workspace) {
-            int xb = (int)(screenWidth * 0.002f);
-            DrawRectangle((int)xclockWin.x, (int)xclockWin.y, (int)xclockWin.width, (int)xclockWin.height, (Color){80,80,120,255});
-            DrawRectangle((int)xclockWin.x + xb, (int)xclockWin.y + xb, (int)xclockWin.width - 2*xb, (int)xclockWin.height - 2*xb, x11_white);
-            int xTitleH = 28;
-            DrawRectangle((int)xclockWin.x + xb, (int)xclockWin.y + xb, (int)xclockWin.width - 2*xb, xTitleH, (Color){60,60,80,255});
-            int xCloseSz = xTitleH - 6;
-            int xCloseX = (int)(xclockWin.x + xclockWin.width - xCloseSz - xb - 4);
-            int xCloseY = (int)(xclockWin.y + xb + 3);
-            DrawRectangle(xCloseX, xCloseY, xCloseSz, xCloseSz, xclock_close_hover ? RED : (Color){120,120,120,255});
-            DrawTextEx(guiFont, "X", (Vector2){(float)(xCloseX + 4), (float)(xCloseY + 2)}, 14.0f, 0.0f, x11_white);
-            float cx = xclockWin.x + xclockWin.width/2.0f;
-            float cy = xclockWin.y + xclockWin.height/2.0f + 8;
-            float radius = (xclockWin.width < xclockWin.height ? xclockWin.width : xclockWin.height) * 0.35f;
-            DrawCircle((int)cx, (int)cy, radius, (Color){18,18,18,255});
-            DrawCircleLines((int)cx, (int)cy, radius, (Color){200,200,200,255});
-            time_t nowt = time(NULL);
-            struct tm* tmnow = localtime(&nowt);
-            float sec = tmnow->tm_sec;
-            float min = tmnow->tm_min + sec/60.0f;
-            float hr  = (tmnow->tm_hour % 12) + min/60.0f;
-            float angSec = (sec / 60.0f) * 2*PI - PI/2;
-            float angMin = (min / 60.0f) * 2*PI - PI/2;
-            float angHr  = (hr  / 12.0f) * 2*PI - PI/2;
-            DrawLine((int)cx, (int)cy, (int)(cx + cosf(angHr)*(radius*0.5f)), (int)(cy + sinf(angHr)*(radius*0.5f)), (Color){220,220,220,255});
-            DrawLine((int)cx, (int)cy, (int)(cx + cosf(angMin)*(radius*0.75f)), (int)(cy + sinf(angMin)*(radius*0.75f)), (Color){200,200,200,255});
-            DrawLine((int)cx, (int)cy, (int)(cx + cosf(angSec)*(radius*0.9f)), (int)(cy + sinf(angSec)*(radius*0.9f)), (Color){255,0,0,255});
-        }
-        if (last_clicked == WIN_UTILS && utilities_open && utilities_workspace == workspace) {
-            int ub = (int)(screenWidth * 0.002f);
-            DrawRectangle((int)utilitiesWin.x, (int)utilitiesWin.y, (int)utilitiesWin.width, (int)utilitiesWin.height, (Color){80,80,120,255});
-            DrawRectangle((int)utilitiesWin.x + ub, (int)utilitiesWin.y + ub, (int)utilitiesWin.width - 2*ub, (int)utilitiesWin.height - 2*ub, x11_white);
-            int uTitleH = 28;
-            DrawRectangle((int)utilitiesWin.x + ub, (int)utilitiesWin.y + ub, (int)utilitiesWin.width - 2*ub, uTitleH, (Color){60,60,80,255});
-            int uCloseSz = uTitleH - 6;
-            int uCloseX = (int)(utilitiesWin.x + utilitiesWin.width - uCloseSz - ub - 4);
-            int uCloseY = (int)(utilitiesWin.y + ub + 3);
-            DrawRectangle(uCloseX, uCloseY, uCloseSz, uCloseSz, utilities_close_hover ? RED : (Color){120,120,120,255});
-            DrawTextEx(guiFont, "X", (Vector2){(float)(uCloseX + 4), (float)(uCloseY + 2)}, 14.0f, 0.0f, x11_white);
-            // Redraw icons and labels (simpler: reuse client drawing loop quickly)
-            {
-                const char* labels[2] = { "Clear Terminal", "xclock" };
-                Texture2D* icons[2] = { &xtermlogo, &xclocklogo };
-                int nshort = 2;
-                float baseScale = 0.24f;
-                int padding = 12;
-                int gap = 20;
-                int availableW = (int)(utilitiesWin.width - 2*padding);
-                if (availableW < 1) availableW = 1;
-                int widths[2]; int heights[2];
-                for (int i = 0; i < nshort; i++) { widths[i] = (int)(icons[i]->width * baseScale); heights[i] = (int)(icons[i]->height * baseScale); }
-                int totalNeeded = -gap; int maxH = 0; for (int i = 0; i < nshort; i++) { totalNeeded += widths[i] + gap; if (heights[i] > maxH) maxH = heights[i]; }
-                float uniformScale = baseScale;
-                if (totalNeeded > availableW) { float shrink = (float)availableW / (float)totalNeeded; if (shrink < 0.5f) shrink = 0.5f; uniformScale = baseScale * shrink; for (int i = 0; i < nshort; i++) { widths[i] = (int)(icons[i]->width * uniformScale); heights[i] = (int)(icons[i]->height * uniformScale); } }
-                int leftX = (int)(utilitiesWin.x + padding); int topY = (int)(utilitiesWin.y + ub + uTitleH + 12);
-                Rectangle rects[2];
-                if (totalNeeded <= availableW) { int x = leftX; for (int i = 0; i < nshort; i++) { rects[i] = (Rectangle){ (float)x, (float)topY, (float)widths[i], (float)heights[i] }; x += widths[i] + gap; } } else { int x = leftX; int y = topY; for (int i = 0; i < nshort; i++) { rects[i] = (Rectangle){ (float)x, (float)y, (float)widths[i], (float)heights[i] }; y += heights[i] + 28; int maxY = (int)(utilitiesWin.y + utilitiesWin.height - padding - heights[i] - 8); if (rects[i].y > maxY) rects[i].y = maxY; } }
-                for (int i = 0; i < nshort; i++) {
-                    DrawTextureEx(*icons[i], (Vector2){rects[i].x, rects[i].y}, 0.0f, uniformScale, x11_white);
-                    int labFont = 14;
-                    Vector2 tempSz = MeasureTextEx(guiFont, labels[i], (float)labFont, 0.0f);
-                    int w = (int)tempSz.x; if (w > (int)(utilitiesWin.width - 2*padding)) w = (int)(utilitiesWin.width - 2*padding);
-                    int tx = (int)rects[i].x + ((int)rects[i].width)/2 - w/2; int minTx = (int)(utilitiesWin.x + padding); int maxTx = (int)(utilitiesWin.x + utilitiesWin.width - padding - w); if (tx < minTx) tx = minTx; if (tx > maxTx) tx = maxTx;
-                    int ty = (int)(rects[i].y + rects[i].height + 8);
-                    DrawRectangle(tx - 6, ty - 4, w + 12, labFont + 6, (Color){20,20,30,180});
-                    DrawTextEx(guiFont, labels[i], (Vector2){(float)tx, (float)ty}, (float)labFont, 0.0f, x11_white);
+            
+            if (shell && ChildProcessAlive(shell)) {
+                char readBuf[256];
+                int bytesRead = ReadShellOutput(shell, readBuf, sizeof(readBuf) - 1);
+                if (bytesRead > 0) {
+                    readBuf[bytesRead] = '\0';
+                    // Append to buffer
+                    if (bufferPos + bytesRead < sizeof(terminalBuffer) - 1) {
+                        strcat(terminalBuffer + bufferPos, readBuf);
+                        bufferPos += bytesRead;
+                        
+                        // Count newlines to track lines
+                        for (int i = 0; i < bytesRead; i++) {
+                            if (readBuf[i] == '\n') lineCount++;
+                        }
+                    }
+                }
+                
+                // Calculate available space for text (bigger line height for bigger text)
+                float availableHeight = termWin.height - titleH - 120; // Space below header info
+                int maxLines = (int)(availableHeight / 22); // 22px line height for 20px text
+                
+                // Auto-clear if we have too many lines
+                if (lineCount > maxLines) {
+                    memset(terminalBuffer, 0, sizeof(terminalBuffer));
+                    bufferPos = 0;
+                    lineCount = 0;
+                    strcpy(terminalBuffer, "[Terminal cleared - too many lines]\n");
+                    bufferPos = strlen(terminalBuffer);
+                    lineCount = 1;
+                }
+                
+                // Display terminal output with much bigger text
+                if (strlen(terminalBuffer) > 0) {
+                    DrawTextEx(guiFont, terminalBuffer, 
+                              (Vector2){termWin.x + 16, termWin.y + titleH + 98}, 20, 0.0f, fwvm_term_fg);
+                }
+            } else {
+                DrawTextEx(guiFont, "$ _", 
+                          (Vector2){termWin.x + 16, termWin.y + titleH + 98}, 22, 0.0f, fwvm_term_fg);
+            }
+            
+            // Draw current input line
+            char promptLine[512];
+            snprintf(promptLine, sizeof(promptLine), "$ %s%s", inputLine, terminal_focused ? "_" : "");
+            float inputY = termWin.y + termWin.height - 50; // Near bottom of terminal
+            DrawTextEx(guiFont, promptLine, (Vector2){termWin.x + 16, inputY}, 18, 0.0f, 
+                      terminal_focused ? fwvm_accent : fwvm_term_fg);
+            
+            // Handle terminal close button
+            Rectangle closeBtnRect = {(float)closeBtnX, (float)closeBtnY, (float)closeBtnSz, (float)closeBtnSz};
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(mouse, closeBtnRect)) {
+                terminal_open = 0;
+                if (shell) {
+                    CloseShell(shell);
+                    DestroyChildProc(shell);
+                    shell = NULL;
                 }
             }
-        }
-        if (last_clicked == WIN_TERM && terminal_open && !terminal_minimized && term_workspace == workspace) {
-            int border = (int)(screenWidth * 0.002f);
-            int titleH = (int)(termWin.height * 0.07f);
-            DrawRectangleRec(termWin, (Color){80, 80, 120, 255});
-            DrawRectangle((int)termWin.x + border, (int)termWin.y + border, (int)termWin.width - 2*border, (int)termWin.height - 2*border, x11_term_bg);
-            DrawRectangle((int)termWin.x + border, (int)termWin.y + border, (int)termWin.width - 2*border, titleH, (Color){60, 60, 80, 255});
-            int closeBtnSz = titleH-4;
-            int closeBtnX = (int)(termWin.x + termWin.width - closeBtnSz - border);
-            int closeBtnY = (int)(termWin.y + border + 2);
-            DrawRectangle(closeBtnX, closeBtnY, closeBtnSz, closeBtnSz, close_hover ? RED : (Color){120, 120, 120, 255});
-            DrawTextEx(guiFont, "X", (Vector2){(float)(closeBtnX + 7), (float)(closeBtnY + 4)}, (float)(titleH*0.5f), 0.0f, x11_white);
-            int minBtnSz = closeBtnSz; int minBtnX = closeBtnX - minBtnSz - 4; if (minBtnX < termWin.x + border) minBtnX = (int)(termWin.x + border); int minBtnY = closeBtnY;
-            DrawRectangle(minBtnX, minBtnY, minBtnSz, minBtnSz, (Color){120, 120, 120, 255});
-            DrawTextEx(guiFont, "_", (Vector2){(float)(minBtnX + 10), (float)(minBtnY + 4)}, (float)(titleH*0.5f), 0.0f, x11_white);
-            int y = (int)(termWin.y + titleH + 12);
-            int x = (int)(termWin.x + 16);
-            int maxY = (int)(termWin.y + termWin.height - 36);
-            int first = 0;
-            int lineH = (int)(termWin.height * 0.045f);
-            int maxLinesOnScreen = (maxY - y) / lineH;
-            if (lineCount > maxLinesOnScreen) first = lineCount - maxLinesOnScreen;
-            for (int i = first; i < lineCount; i++) {
-                DrawTextEx(GetFontDefault(), lines[i], (Vector2){(float)x, (float)y}, (float)lineH, 1.0f, x11_term_fg);
-                y += lineH; if (y > maxY) break;
+            
+            // Handle terminal window dragging
+            Rectangle titleBarRect = {termWin.x + border, termWin.y + border, termWin.width - 2*border - closeBtnSz - 8, titleH};
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(mouse, titleBarRect)) {
+                terminal_dragging = 1;
+                terminal_drag_offset.x = mouse.x - termWin.x;
+                terminal_drag_offset.y = mouse.y - termWin.y;
+                last_clicked = WIN_TERM;
             }
-            int promptH = (int)(termWin.height * 0.055f);
-            DrawRectangle(x - 4, maxY + 8, (int)termWin.width - 32, promptH, x11_dkgray);
-            DrawTextEx(guiFont, "> ", (Vector2){(float)x, (float)(maxY + 10)}, (float)(promptH*0.7f), 0.0f, x11_white);
-            Vector2 promptSz = MeasureTextEx(guiFont, "> ", (float)(promptH*0.7f), 0.0f);
-            DrawTextEx(guiFont, inputLine, (Vector2){(float)(x + (int)promptSz.x), (float)(maxY + 10)}, (float)(promptH*0.7f), 0.0f, x11_white);
-        }
-    // Cleanup
-        /* Time and check around EndDrawing()/presentation. This helps detect
-       stalls that occur during buffer swap/presentation or in the driver. */
-       double __end_t0 = GetTime();
-        if (frameCount <= 2) {
-            printf("DEBUG: About to call EndDrawing() for frame %d\n", frameCount);
-            fflush(stdout);
-        }
-        EndDrawing();
-        if (frameCount <= 2) {
-            printf("DEBUG: EndDrawing() completed for frame %d\n", frameCount);
-            fflush(stdout);
         }
         
-        double __end_t1 = GetTime();
-        double __end_dt = __end_t1 - __end_t0;
-        if (__end_dt > 0.02) {
-            // Frame took too long - could add debug info here
+        // Handle terminal keyboard input
+        if (terminal_open && terminal_focused) {
+            int key = GetCharPressed();
+            while (key > 0) {
+                if (key >= 32 && key < 127 && inputPos < sizeof(inputLine) - 1) {
+                    inputLine[inputPos] = (char)key;
+                    inputPos++;
+                    inputLine[inputPos] = '\0';
+                }
+                key = GetCharPressed();
+            }
+            
+            // Handle special keys
+            if (IsKeyPressed(KEY_ENTER)) {
+                if (shell && strlen(inputLine) > 0) {
+                    strcat(inputLine, "\n");
+                    WriteShellInput(shell, inputLine, strlen(inputLine));
+                }
+                memset(inputLine, 0, sizeof(inputLine));
+                inputPos = 0;
+            }
+            
+            if (IsKeyPressed(KEY_BACKSPACE) && inputPos > 0) {
+                inputPos--;
+                inputLine[inputPos] = '\0';
+            }
         }
-    } // while (running && !WindowShouldClose())
-    printf("DEBUG: Main loop exited, running=%d, WindowShouldClose()=%d\n", running, WindowShouldClose());
-    fflush(stdout);
-    
-    // Cleanup
-    if (shell) { 
-        CloseShell(shell); 
-        DestroyChildProc(shell); 
-        shell = NULL; 
+        
+        // Set terminal focus when clicked
+        if (terminal_open && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            Vector2 mouse = GetMousePosition();
+            Rectangle termContentRect = {termWin.x, termWin.y + 32, termWin.width, termWin.height - 32};
+            terminal_focused = CheckCollisionPointRec(mouse, termContentRect) ? 1 : 0;
+        }
+        
+        // Handle terminal drag movement (outside the drawing block to ensure it works)
+        if (terminal_dragging && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+            Vector2 mousePos = GetMousePosition();
+            termWin.x = mousePos.x - terminal_drag_offset.x;
+            termWin.y = mousePos.y - terminal_drag_offset.y;
+            
+            // Keep window on screen
+            if (termWin.x < 0) termWin.x = 0;
+            if (termWin.y < 48) termWin.y = 48; // Below top bar
+            if (termWin.x + termWin.width > screenWidth) termWin.x = screenWidth - termWin.width;
+            if (termWin.y + termWin.height > screenHeight - 48) termWin.y = screenHeight - 48 - termWin.height; // Above taskbar
+        }
+        
+        if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+            terminal_dragging = 0;
+            xclock_dragging = 0;
+            utilities_dragging = 0;
+        }
+
+        // Draw FWVM 3.x xclock window
+        if (xclock_open && !xclock_minimized) {
+            int border = 1;
+            int titleH = 32;
+            
+            // Modern flat clock window with shadow
+            DrawRectangle((int)xclockWin.x + 2, (int)xclockWin.y + 2, (int)xclockWin.width, (int)xclockWin.height, (Color){0, 0, 0, 60}); // Shadow
+            DrawRectangleRec(xclockWin, fwvm_border);
+            DrawRectangle((int)xclockWin.x + border, (int)xclockWin.y + border, 
+                         (int)xclockWin.width - 2*border, (int)xclockWin.height - 2*border, fwvm_light_gray);
+            
+            // Modern flat title bar
+            DrawRectangle((int)xclockWin.x + border, (int)xclockWin.y + border, 
+                         (int)xclockWin.width - 2*border, titleH, fwvm_taskbar);
+            DrawTextEx(guiFont, "FWVM Clock 3.x", (Vector2){xclockWin.x + border + 12, xclockWin.y + border + 8}, 
+                      16, 0.0f, fwvm_white);
+            
+            // Modern flat close button
+            int closeBtnSz = titleH - 8;
+            int closeBtnX = (int)(xclockWin.x + xclockWin.width - closeBtnSz - border - 8);
+            int closeBtnY = (int)(xclockWin.y + border + 4);
+            DrawRectangle(closeBtnX, closeBtnY, closeBtnSz, closeBtnSz, (Color){232, 17, 35, 255}); // Windows red
+            DrawTextEx(guiFont, "×", (Vector2){(float)(closeBtnX + 4), (float)(closeBtnY + 2)}, 
+                      14, 0.0f, fwvm_white);
+            
+            // Clock face area
+            float clockCenterX = xclockWin.x + xclockWin.width / 2;
+            float clockCenterY = xclockWin.y + titleH + (xclockWin.height - titleH) / 2 + 10;
+            float clockRadius = (xclockWin.width < xclockWin.height - titleH ? xclockWin.width : xclockWin.height - titleH) / 2 - 20;
+            
+            // Draw clock face
+            DrawCircle((int)clockCenterX, (int)clockCenterY, clockRadius, fwvm_white);
+            DrawCircleLines((int)clockCenterX, (int)clockCenterY, clockRadius, fwvm_dark_gray);
+            
+            // Get current time for clock hands
+            time_t now = time(NULL);
+            struct tm* tm_info = localtime(&now);
+            
+            // Draw hour markers
+            for (int i = 0; i < 12; i++) {
+                float angle = (i * 30 - 90) * DEG2RAD;
+                float x1 = clockCenterX + (clockRadius - 15) * cosf(angle);
+                float y1 = clockCenterY + (clockRadius - 15) * sinf(angle);
+                float x2 = clockCenterX + (clockRadius - 5) * cosf(angle);
+                float y2 = clockCenterY + (clockRadius - 5) * sinf(angle);
+                DrawLineEx((Vector2){x1, y1}, (Vector2){x2, y2}, 3, fwvm_dark_gray);
+            }
+            
+            // Draw hour hand
+            float hourAngle = ((tm_info->tm_hour % 12) * 30 + tm_info->tm_min * 0.5f - 90) * DEG2RAD;
+            float hourX = clockCenterX + (clockRadius * 0.5f) * cosf(hourAngle);
+            float hourY = clockCenterY + (clockRadius * 0.5f) * sinf(hourAngle);
+            DrawLineEx((Vector2){clockCenterX, clockCenterY}, (Vector2){hourX, hourY}, 6, fwvm_dark_gray);
+            
+            // Draw minute hand
+            float minuteAngle = (tm_info->tm_min * 6 - 90) * DEG2RAD;
+            float minuteX = clockCenterX + (clockRadius * 0.7f) * cosf(minuteAngle);
+            float minuteY = clockCenterY + (clockRadius * 0.7f) * sinf(minuteAngle);
+            DrawLineEx((Vector2){clockCenterX, clockCenterY}, (Vector2){minuteX, minuteY}, 4, fwvm_accent);
+            
+            // Draw second hand
+            float secondAngle = (tm_info->tm_sec * 6 - 90) * DEG2RAD;
+            float secondX = clockCenterX + (clockRadius * 0.8f) * cosf(secondAngle);
+            float secondY = clockCenterY + (clockRadius * 0.8f) * sinf(secondAngle);
+            DrawLineEx((Vector2){clockCenterX, clockCenterY}, (Vector2){secondX, secondY}, 2, (Color){232, 17, 35, 255});
+            
+            // Center dot
+            DrawCircle((int)clockCenterX, (int)clockCenterY, 4, fwvm_dark_gray);
+            
+            // Digital time display
+            char digitalTime[32];
+            strftime(digitalTime, sizeof(digitalTime), "%H:%M:%S", tm_info);
+            Vector2 timeSize = MeasureTextEx(guiFont, digitalTime, 16, 0.0f);
+            DrawTextEx(guiFont, digitalTime, 
+                      (Vector2){clockCenterX - timeSize.x/2, xclockWin.y + xclockWin.height - 30}, 
+                      16, 0.0f, fwvm_dark_gray);
+            
+            // Handle clock close button
+            Rectangle clockCloseBtnRect = {(float)closeBtnX, (float)closeBtnY, (float)closeBtnSz, (float)closeBtnSz};
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(mouse, clockCloseBtnRect)) {
+                xclock_open = 0;
+                if (last_clicked == WIN_XCLOCK) last_clicked = -1;
+            }
+            
+            // Handle xclock window dragging
+            Rectangle clockTitleBarRect = {xclockWin.x + border, xclockWin.y + border, xclockWin.width - 2*border - closeBtnSz - 8, titleH};
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(mouse, clockTitleBarRect)) {
+                xclock_dragging = 1;
+                xclock_drag_offset.x = mouse.x - xclockWin.x;
+                xclock_drag_offset.y = mouse.y - xclockWin.y;
+                last_clicked = WIN_XCLOCK;
+            }
+        }
+        
+        // Handle xclock drag movement
+        if (xclock_dragging && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+            Vector2 mousePos = GetMousePosition();
+            xclockWin.x = mousePos.x - xclock_drag_offset.x;
+            xclockWin.y = mousePos.y - xclock_drag_offset.y;
+            
+            // Keep window on screen
+            if (xclockWin.x < 0) xclockWin.x = 0;
+            if (xclockWin.y < 48) xclockWin.y = 48; // Below top bar
+            if (xclockWin.x + xclockWin.width > screenWidth) xclockWin.x = screenWidth - xclockWin.width;
+            if (xclockWin.y + xclockWin.height > screenHeight - 48) xclockWin.y = screenHeight - 48 - xclockWin.height; // Above taskbar
+        }
+
+        // Draw xcalc window using the widget function
+        draw_xcalc_widget(&xcalcWin, &xcalc_open, &xcalc_minimized, &xcalc_resizing, &xcalc_close_hover,
+                         &xcalc_workspace, &xcalc_sticky, guiFont, xcalclogo,
+                         &last_clicked, WIN_XCALC, &focused_window, workspace, screenWidth, screenHeight);
+
+        // Draw XEyes window
+        draw_xeyes_window(&xeyesWin, &xeyes_open, &xeyes_minimized, &xeyes_dragging, &xeyes_drag_offset,
+                         &last_clicked, WIN_XEYES, guiFont, screenWidth, screenHeight);
+
+        // Draw FWVM 3.x Utilities window
+        if (utilities_open && !utilities_minimized) {
+            int border = 1;
+            int titleH = 32;
+            
+            // Modern flat utilities window with shadow
+            DrawRectangle((int)utilitiesWin.x + 2, (int)utilitiesWin.y + 2, (int)utilitiesWin.width, (int)utilitiesWin.height, (Color){0, 0, 0, 60}); // Shadow
+            DrawRectangleRec(utilitiesWin, fwvm_border);
+            DrawRectangle((int)utilitiesWin.x + border, (int)utilitiesWin.y + border, 
+                         (int)utilitiesWin.width - 2*border, (int)utilitiesWin.height - 2*border, fwvm_light_gray);
+            
+            // Modern flat title bar
+            DrawRectangle((int)utilitiesWin.x + border, (int)utilitiesWin.y + border, 
+                         (int)utilitiesWin.width - 2*border, titleH, fwvm_taskbar);
+            DrawTextEx(guiFont, "FWVM Utilities 3.x", (Vector2){utilitiesWin.x + border + 12, utilitiesWin.y + border + 8}, 
+                      16, 0.0f, fwvm_white);
+            
+            // Modern flat close button
+            int closeBtnSz = titleH - 8;
+            int closeBtnX = (int)(utilitiesWin.x + utilitiesWin.width - closeBtnSz - border - 8);
+            int closeBtnY = (int)(utilitiesWin.y + border + 4);
+            DrawRectangle(closeBtnX, closeBtnY, closeBtnSz, closeBtnSz, (Color){232, 17, 35, 255}); // Windows red
+            DrawTextEx(guiFont, "×", (Vector2){(float)(closeBtnX + 4), (float)(closeBtnY + 2)}, 
+                      14, 0.0f, fwvm_white);
+            
+            // Utility buttons
+            int btnW = 200, btnH = 30;
+            int btnX = (int)utilitiesWin.x + 40;
+            int btnY = (int)utilitiesWin.y + titleH + 20;
+            
+            // Clear Terminal button
+            Rectangle clearTermBtn = {btnX, btnY, btnW, btnH};
+            int clearHover = CheckCollisionPointRec(mouse, clearTermBtn);
+            DrawRectangleRec(clearTermBtn, clearHover ? fwvm_hover : fwvm_accent);
+            DrawRectangleLinesEx(clearTermBtn, 1, fwvm_border);
+            DrawTextEx(guiFont, "Clear Terminal", (Vector2){btnX + 60, btnY + 6}, 16, 0.0f, fwvm_white);
+            
+            // Open Clock button
+            Rectangle openClockBtn = {btnX, btnY + 40, btnW, btnH};
+            int clockHover = CheckCollisionPointRec(mouse, openClockBtn);
+            DrawRectangleRec(openClockBtn, clockHover ? fwvm_hover : fwvm_accent);
+            DrawRectangleLinesEx(openClockBtn, 1, fwvm_border);
+            DrawTextEx(guiFont, "Open Clock", (Vector2){btnX + 70, btnY + 46}, 16, 0.0f, fwvm_white);
+            
+            // Open Calculator button
+            Rectangle openCalcBtn = {btnX, btnY + 80, btnW, btnH};
+            int calcHover = CheckCollisionPointRec(mouse, openCalcBtn);
+            DrawRectangleRec(openCalcBtn, calcHover ? fwvm_hover : fwvm_accent);
+            DrawRectangleLinesEx(openCalcBtn, 1, fwvm_border);
+            DrawTextEx(guiFont, "Open Calculator", (Vector2){btnX + 55, btnY + 86}, 16, 0.0f, fwvm_white);
+            
+            // Handle button clicks
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                if (CheckCollisionPointRec(mouse, clearTermBtn)) {
+                    // Request terminal clear
+                    clear_terminal_requested = 1;
+                } else if (CheckCollisionPointRec(mouse, openClockBtn)) {
+                    if (!xclock_open) {
+                        xclock_open = 1;
+                        last_clicked = WIN_XCLOCK;
+                    }
+                } else if (CheckCollisionPointRec(mouse, openCalcBtn)) {
+                    if (!xcalc_open) {
+                        xcalc_open = 1;
+                        last_clicked = WIN_XCALC;
+                    }
+                }
+            }
+            
+            // Handle utilities close button
+            Rectangle utilitiesCloseBtnRect = {(float)closeBtnX, (float)closeBtnY, (float)closeBtnSz, (float)closeBtnSz};
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(mouse, utilitiesCloseBtnRect)) {
+                utilities_open = 0;
+                if (last_clicked == WIN_UTILITIES) last_clicked = -1;
+            }
+            
+            // Handle utilities window dragging
+            Rectangle utilitiesTitleBarRect = {utilitiesWin.x + border, utilitiesWin.y + border, utilitiesWin.width - 2*border - closeBtnSz - 8, titleH};
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(mouse, utilitiesTitleBarRect)) {
+                utilities_dragging = 1;
+                utilities_drag_offset.x = mouse.x - utilitiesWin.x;
+                utilities_drag_offset.y = mouse.y - utilitiesWin.y;
+                last_clicked = WIN_UTILITIES;
+            }
+        }
+        
+        // Handle utilities drag movement
+        if (utilities_dragging && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+            Vector2 mousePos = GetMousePosition();
+            utilitiesWin.x = mousePos.x - utilities_drag_offset.x;
+            utilitiesWin.y = mousePos.y - utilities_drag_offset.y;
+            
+            // Keep window on screen
+            if (utilitiesWin.x < 0) utilitiesWin.x = 0;
+            if (utilitiesWin.y < 48) utilitiesWin.y = 48; // Below top bar
+            if (utilitiesWin.x + utilitiesWin.width > screenWidth) utilitiesWin.x = screenWidth - utilitiesWin.width;
+            if (utilitiesWin.y + utilitiesWin.height > screenHeight - 48) utilitiesWin.y = screenHeight - 48 - utilitiesWin.height; // Above taskbar
+        }
+
+        // Draw FWVM 3.x About Dialog
+        if (about_open) {
+            int border = 1;
+            int titleH = 32;
+            
+            // Modern flat about dialog with shadow
+            DrawRectangle((int)aboutWin.x + 2, (int)aboutWin.y + 2, (int)aboutWin.width, (int)aboutWin.height, (Color){0, 0, 0, 60}); // Shadow
+            DrawRectangleRec(aboutWin, fwvm_border);
+            DrawRectangle((int)aboutWin.x + border, (int)aboutWin.y + border, 
+                         (int)aboutWin.width - 2*border, (int)aboutWin.height - 2*border, fwvm_light_gray);
+            
+            // Modern flat title bar
+            DrawRectangle((int)aboutWin.x + border, (int)aboutWin.y + border, 
+                         (int)aboutWin.width - 2*border, titleH, fwvm_taskbar);
+            DrawTextEx(guiFont, "About X11", (Vector2){aboutWin.x + border + 12, aboutWin.y + border + 8}, 
+                      16, 0.0f, fwvm_white);
+            
+            // Modern flat close button
+            int closeBtnSz = titleH - 8;
+            int closeBtnX = (int)(aboutWin.x + aboutWin.width - closeBtnSz - border - 8);
+            int closeBtnY = (int)(aboutWin.y + border + 4);
+            DrawRectangle(closeBtnX, closeBtnY, closeBtnSz, closeBtnSz, (Color){232, 17, 35, 255}); // Windows red
+            DrawTextEx(guiFont, "×", (Vector2){(float)(closeBtnX + 4), (float)(closeBtnY + 2)}, 
+                      14, 0.0f, fwvm_white);
+            
+            // About dialog content
+            float contentY = aboutWin.y + titleH + 20;
+            DrawTextEx(guiFont, "WNUOS GUI X11 WM: FVWM 3.x", 
+                      (Vector2){aboutWin.x + 20, contentY}, 18, 0.0f, fwvm_dark_gray);
+            DrawTextEx(guiFont, "Flat Windows Virtual Machine Desktop Environment", 
+                      (Vector2){aboutWin.x + 20, contentY + 30}, 14, 0.0f, fwvm_dark_gray);
+            DrawTextEx(guiFont, "Built with raylib graphics library", 
+                      (Vector2){aboutWin.x + 20, contentY + 50}, 14, 0.0f, fwvm_dark_gray);
+            DrawTextEx(guiFont, "Copyright (c) WNU Project 2025", 
+                      (Vector2){aboutWin.x + 20, contentY + 80}, 14, 0.0f, fwvm_dark_gray);
+            
+            // Handle about close button
+            Rectangle aboutCloseBtnRect = {(float)closeBtnX, (float)closeBtnY, (float)closeBtnSz, (float)closeBtnSz};
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(mouse, aboutCloseBtnRect)) {
+                about_open = 0;
+            }
+            
+            // Handle about window dragging
+            Rectangle aboutTitleBarRect = {aboutWin.x + border, aboutWin.y + border, aboutWin.width - 2*border - closeBtnSz - 8, titleH};
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && CheckCollisionPointRec(mouse, aboutTitleBarRect)) {
+                about_dragging = 1;
+                about_drag_offset.x = mouse.x - aboutWin.x;
+                about_drag_offset.y = mouse.y - aboutWin.y;
+            }
+        }
+        
+        // Handle about drag movement
+        if (about_dragging && IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+            Vector2 mousePos = GetMousePosition();
+            aboutWin.x = mousePos.x - about_drag_offset.x;
+            aboutWin.y = mousePos.y - about_drag_offset.y;
+            
+            // Keep window on screen
+            if (aboutWin.x < 0) aboutWin.x = 0;
+            if (aboutWin.y < 48) aboutWin.y = 48; // Below top bar
+            if (aboutWin.x + aboutWin.width > screenWidth) aboutWin.x = screenWidth - aboutWin.width;
+            if (aboutWin.y + aboutWin.height > screenHeight - 48) aboutWin.y = screenHeight - 48 - aboutWin.height; // Above taskbar
+        }
+        
+        if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+            terminal_dragging = 0;
+            xclock_dragging = 0;
+            utilities_dragging = 0;
+            about_dragging = 0;
+        }
+
+        // Draw FWVM 3.x modern taskbar
+        int taskbarH = 48;
+        int taskbarY = screenHeight - taskbarH;
+        DrawRectangle(0, taskbarY, screenWidth, taskbarH, fwvm_taskbar);
+        DrawRectangle(0, taskbarY, screenWidth, 1, fwvm_border); // Top border
+        
+        // FWVM start button area
+        int startBtnW = 80;
+        DrawRectangle(8, taskbarY + 6, startBtnW, taskbarH - 12, fwvm_accent);
+        DrawTextEx(guiFont, "FWVM", (Vector2){18, (float)(taskbarY + 14)}, 18, 0.0f, fwvm_white);
+        
+        // Version indicator
+        DrawTextEx(guiFont, "v3.x", (Vector2){startBtnW + 20, (float)(taskbarY + 12)}, 16, 0.0f, fwvm_white);
+        
+        // Current time with modern styling
+        time_t now = time(NULL);
+        struct tm* tm_info = localtime(&now);
+        char timeStr[64];
+        strftime(timeStr, sizeof(timeStr), "%H:%M:%S", tm_info);
+        Vector2 timeSz = MeasureTextEx(guiFont, timeStr, 16, 0.0f);
+        
+        // Time background panel
+        int timePanelW = (int)timeSz.x + 20;
+        DrawRectangle(screenWidth - timePanelW - 8, taskbarY + 6, timePanelW, taskbarH - 12, fwvm_dark_gray);
+        DrawTextEx(guiFont, timeStr, (Vector2){screenWidth - timeSz.x - 18, (float)(taskbarY + 16)}, 
+                  16, 0.0f, fwvm_white);
+
+        EndDrawing();
     }
+
+    // Cleanup
+    if (shell) {
+        CloseShell(shell);
+        DestroyChildProc(shell);
+        shell = NULL;
+    }
+    
     UnloadTexture(logo);
     UnloadTexture(xtermlogo);
     UnloadTexture(xclocklogo);
     UnloadTexture(xcalclogo);
     UnloadFont(guiFont);
     CloseWindow();
+    
     return 0;
-}
 }

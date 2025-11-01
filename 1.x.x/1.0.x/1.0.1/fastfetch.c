@@ -246,7 +246,7 @@ int fastfetch() {
     printf("\033[36mOS\033[0m: Windows %lu.%lu.%lu %s\n", osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber, arch);
     printf("\033[36mKernel\033[0m: Windows NT %s\n", windows_nt_version ? windows_nt_version : "Unknown");
     printf("\033[36mUptime\033[0m: %s\n", uptime_str);
-    printf("\033[36mPackages\033[0m: (WNU Package Manager coming soon)\n");
+    printf("\033[36mPackages\033[0m: wsys2: (WIP)\n");
     printf("\033[36mShell\033[0m: WNU OS Shell (bash)\n");
     printf("\033[36mResolution\033[0m: %s\n", resolution_str);
     printf("\033[36mDE\033[0m: X11\n");
