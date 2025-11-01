@@ -67,12 +67,12 @@ WNU OS/
 ### Building from Source
 
 ```bash
-cd "1.x.x/1.0.x/1.0.0/"
+cd "1.x.x/1.0.x/1.0.1/"
 make
 # or
 build.bat
 # or  
-gcc -o main.c boot.c userlogin.c poweroff.c halt.c reboot.c wsys2/wsys2.c wsys2/package.c tty_session.c motd.c X11/x11.c X11/shell_win.c fastfetch.c X11/xcalc.c X11/xeyes.c X11/xlogo.c
+gcc -std=c11 -o wnuos.exe main.c boot.c userlogin.c poweroff.c halt.c reboot.c wsys2/wsys2.c wsys2/package.c tty_session.c motd.c X11/x11.c X11/shell_win.c fastfetch.c X11/xcalc.c X11/xeyes.c X11/xlogo.c -lraylib -lopengl32 -lgdi32 -luser32 -ladvapi32 -lnetapi32 -lkernel32 -lwininet -lws2_32 -lwinmm
 ```
 
 ## 🎯 Version History
