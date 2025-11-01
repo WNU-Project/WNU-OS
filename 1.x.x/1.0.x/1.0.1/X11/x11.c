@@ -203,13 +203,18 @@ static void draw_xcalc_widget(Rectangle *xcalcWin, int *xcalc_open, int *xcalc_m
 int x11(void) {
     // Print OS it was build for and get the OS version
     OSVERSIONINFOEX osvi;
-    memset(&osvi, 0, sizeof(OSVERSIONINFOEX));
+    SYSTEM_INFO si;
+    ZeroMemory(&si, sizeof(SYSTEM_INFO));
+    ZeroMemory(&osvi, sizeof(OSVERSIONINFOEX));
     osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEX);
-    printf("");
+    GetVersionEx((OSVERSIONINFO*)&osvi);
+    GetSystemInfo(&si);
+    printf("Build Operating System: Windows 10.0.26200\n");
+    printf("Current Operating System: Windows %lu.%lu.%lu\n", osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber);
     // Initialize raylib with FWVM 3.x branding
     const int screenWidth = 1024;
     const int screenHeight = 768;
-    InitWindow(screenWidth, screenHeight, "FWVM 3.x - Flat Windows Virtual Machine");
+    InitWindow(screenWidth, screenHeight, "X11 Desktop");
     SetTargetFPS(60);
 
     // Load textures from memory and fonts
@@ -331,7 +336,7 @@ int x11(void) {
         int topBarH = 48;
         DrawRectangle(0, 0, screenWidth, topBarH, fwvm_taskbar);
         DrawRectangle(0, topBarH-1, screenWidth, 1, fwvm_border); // Subtle border
-        DrawTextEx(guiFont, "FWVM 3.x Desktop", (Vector2){10, 12}, 20, 0.0f, fwvm_white);
+        DrawTextEx(guiFont, "X11 Desktop", (Vector2){10, 12}, 20, 0.0f, fwvm_white);
         
         // Draw desktop icons
         float iconScale = 0.18f;
@@ -342,7 +347,7 @@ int x11(void) {
         
         // FWVM desktop icons with flat style
         DrawTextureEx(logo, (Vector2){(float)icon_x, (float)icon_y}, 0.0f, iconScale, fwvm_white);
-        DrawTextEx(guiFont, "FWVM", (Vector2){(float)icon_x, (float)(icon_y + icon_h + 4)}, 14, 0.0f, fwvm_white);
+        DrawTextEx(guiFont, "X11", (Vector2){(float)icon_x, (float)(icon_y + icon_h + 4)}, 14, 0.0f, fwvm_white);
         
         // Terminal icon
         int term_icon_x = icon_x + icon_w + 32;
@@ -533,7 +538,7 @@ int x11(void) {
             // Modern flat title bar
             DrawRectangle((int)termWin.x + border, (int)termWin.y + border, 
                          (int)termWin.width - 2*border, titleH, fwvm_taskbar);
-            DrawTextEx(guiFont, "FWVM Terminal 3.x", (Vector2){termWin.x + border + 12, termWin.y + border + 8}, 
+            DrawTextEx(guiFont, "Terminal", (Vector2){termWin.x + border + 12, termWin.y + border + 8}, 
                       16, 0.0f, fwvm_white);
             
             // Modern flat close button
@@ -549,10 +554,8 @@ int x11(void) {
                          (int)termWin.width - 2*border, (int)termWin.height - 2*border - titleH, fwvm_term_bg);
             
             // Terminal text with FWVM branding and WNU OS executable info (much bigger text)
-            DrawTextEx(guiFont, "FWVM Terminal v3.0", 
+            DrawTextEx(guiFont, "Terminal", 
                       (Vector2){termWin.x + 16, termWin.y + titleH + 16}, 24, 0.0f, fwvm_term_fg);
-            DrawTextEx(guiFont, "Flat Windows Virtual Machine", 
-                      (Vector2){termWin.x + 16, termWin.y + titleH + 46}, 20, 0.0f, fwvm_accent);
             DrawTextEx(guiFont, "Running: C:\\WNU\\WNU OS\\wnuos.exe", 
                       (Vector2){termWin.x + 16, termWin.y + titleH + 72}, 18, 0.0f, (Color){100, 200, 100, 255});
             
@@ -606,13 +609,13 @@ int x11(void) {
                               (Vector2){termWin.x + 16, termWin.y + titleH + 98}, 20, 0.0f, fwvm_term_fg);
                 }
             } else {
-                DrawTextEx(guiFont, "$ _", 
+                DrawTextEx(guiFont, "> _", 
                           (Vector2){termWin.x + 16, termWin.y + titleH + 98}, 22, 0.0f, fwvm_term_fg);
             }
             
             // Draw current input line
             char promptLine[512];
-            snprintf(promptLine, sizeof(promptLine), "$ %s%s", inputLine, terminal_focused ? "_" : "");
+            snprintf(promptLine, sizeof(promptLine), "> %s%s", inputLine, terminal_focused ? "_" : "");
             float inputY = termWin.y + termWin.height - 50; // Near bottom of terminal
             DrawTextEx(guiFont, promptLine, (Vector2){termWin.x + 16, inputY}, 18, 0.0f, 
                       terminal_focused ? fwvm_accent : fwvm_term_fg);
@@ -706,7 +709,7 @@ int x11(void) {
             // Modern flat title bar
             DrawRectangle((int)xclockWin.x + border, (int)xclockWin.y + border, 
                          (int)xclockWin.width - 2*border, titleH, fwvm_taskbar);
-            DrawTextEx(guiFont, "FWVM Clock 3.x", (Vector2){xclockWin.x + border + 12, xclockWin.y + border + 8}, 
+            DrawTextEx(guiFont, "Clock", (Vector2){xclockWin.x + border + 12, xclockWin.y + border + 8}, 
                       16, 0.0f, fwvm_white);
             
             // Modern flat close button
@@ -822,7 +825,7 @@ int x11(void) {
             // Modern flat title bar
             DrawRectangle((int)utilitiesWin.x + border, (int)utilitiesWin.y + border, 
                          (int)utilitiesWin.width - 2*border, titleH, fwvm_taskbar);
-            DrawTextEx(guiFont, "FWVM Utilities 3.x", (Vector2){utilitiesWin.x + border + 12, utilitiesWin.y + border + 8}, 
+            DrawTextEx(guiFont, "Utilities", (Vector2){utilitiesWin.x + border + 12, utilitiesWin.y + border + 8}, 
                       16, 0.0f, fwvm_white);
             
             // Modern flat close button
@@ -987,10 +990,7 @@ int x11(void) {
         // FWVM start button area
         int startBtnW = 80;
         DrawRectangle(8, taskbarY + 6, startBtnW, taskbarH - 12, fwvm_accent);
-        DrawTextEx(guiFont, "FWVM", (Vector2){18, (float)(taskbarY + 14)}, 18, 0.0f, fwvm_white);
-        
-        // Version indicator
-        DrawTextEx(guiFont, "v3.x", (Vector2){startBtnW + 20, (float)(taskbarY + 12)}, 16, 0.0f, fwvm_white);
+        DrawTextEx(guiFont, "X11", (Vector2){18, (float)(taskbarY + 14)}, 18, 0.0f, fwvm_white);
         
         // Current time with modern styling
         time_t now = time(NULL);
