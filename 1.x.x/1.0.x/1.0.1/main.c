@@ -917,6 +917,20 @@ int main(void) {
             snprintf(username_str, sizeof(username_str), "%s", username);
             fastfetch();
         }
+        else if (strcmp(command, "devsnote") == 0) {
+            printf("Hello There, User! nice to see you!\n");
+            printf("It Is Nov 1st 12:01-12:15 PM EDT 2025 as i am writing this right now.\n");
+            printf("Since i made this, it was just a simple shell Proejct, but now, it just....... wow.\n");
+            printf("It has it's own X11 GUI, Package manager, Fastfetch, and Unix stuff, like switching TTYs!\n");
+            printf("But, The Dev Of WNU OS 1.0.1 Update 2 is going to end very soon, i am in a Technology Competition, Named The \"The 2025-2026 Fulton County Student Technology Competition\" And It Starts In Jan 10th, 2025 In North Springs High School.\n");
+            printf("My parnets are pround of me making this, but they told me on Nov 2nd is the LAST DAY to work on WNU OS 1.0.1 Update 2, before i work on my Presentation.\n");
+            printf("Don't worry, WNU OS is not ending, it just the Development Of WNU OS 1.0.1 Update 2 is ending, and the GUI was the HARDEST PART!\n");
+            printf("It took So long to fix the error when it closes when it opens! so i rewrote and it works.\n");
+            printf("It was a problem because i was OPPSESED of winning it! i did not want to get 2nd or 3rd palce i wanted 1ST!\n");
+            printf("but other thne that, in the beginning of 2025, is where i got hooked on Programming, starting with sratch, then Python, then C#, then C++ (GOSH THAT WAS HARD), then C! and it jsut all in ONE YEAR, YES ALL IN 2025!\n");
+            printf("So Thank you users, for using WNU OS 1.0.1 Update 2, get ready For Update 3! I have Plans For it already!\n");
+            printf("- @Coolis1362, The Founder Of the WNU Proejct, an the dev Of WNU OS\n");
+        }
         else if (strlen(command) > 0) {
             system(command); // Run external command
         }
