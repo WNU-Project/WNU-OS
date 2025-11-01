@@ -71,7 +71,7 @@ static void draw_xcalc_widget(Rectangle *xcalcWin, int *xcalc_open, int *xcalc_m
         DrawRectangle((int)xcalcWin->x + xb, (int)xcalcWin->y + xb, (int)xcalcWin->width - 2*xb, (int)xcalcWin->height - 2*xb, (Color){240,240,240,255}); // Light bg
         // Modern flat title bar
         DrawRectangle((int)xcalcWin->x + xb, (int)xcalcWin->y + xb, (int)xcalcWin->width - 2*xb, titleH, (Color){25,25,25,255}); // Dark titlebar
-        DrawTextEx(guiFont, "FWVM Calculator 3.x", (Vector2){xcalcWin->x + xb + 8, xcalcWin->y + xb + 8}, 14.0f, 0.0f, (Color){255,255,255,255});
+        DrawTextEx(guiFont, "Calculator", (Vector2){xcalcWin->x + xb + 8, xcalcWin->y + xb + 8}, 14.0f, 0.0f, (Color){255,255,255,255});
 
         // Modern flat close button (Windows style)
         int closeSz = titleH - 8;
