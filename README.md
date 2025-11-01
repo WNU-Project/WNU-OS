@@ -52,7 +52,7 @@ WNU OS/
 
 ### Installation
 
-1. **Download** the latest release from `/1.x.x/1.0.x/1.0.0/`
+1. **Download** the latest release from `/1.x.x/1.0.x/1.0.1/`
 2. **Run** `WNU OS-1.0.0-win64.exe` or build from source
 3. **Login** as `root` (no password) or use your Windows credentials
 
@@ -64,14 +64,14 @@ make
 # or
 build.bat
 # or  
-gcc -o wnuos.exe main.c boot.c halt.c poweroff.c reboot.c userlogin.c
+gcc -o main.c boot.c userlogin.c poweroff.c halt.c reboot.c wsys2/wsys2.c wsys2/package.c tty_session.c motd.c X11/x11.c X11/shell_win.c fastfetch.c X11/xcalc.c X11/xeyes.c X11/xlogo.c
 ```
 
 ## 🎯 Version History
 
 | Version | Status | Features |
 |---------|--------|----------|
-| **1.0.0** | ✅ **Current** | Full authentication, custom ls, colored prompts, system management |
+| **1.0.1** | ✅ **Current** | Full authentication, custom ls, colored prompts, system management |
 | 1.1.x | 🔄 Planned | Enhanced file operations, command history, tab completion |
 | 1.2.x | 📋 Roadmap | Pipes & redirection, environment variables, scripting |
 | 2.0.x | 🌟 Future | Advanced process management, networking tools |
