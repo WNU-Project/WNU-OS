@@ -112,7 +112,7 @@ static void draw_xcalc_widget(Rectangle *xcalcWin, int *xcalc_open, int *xcalc_m
                     // Handle button actions
                     if (strcmp(lab,"AC")==0) { strcpy(display,"0"); pending=0.0; op=0; entering=0; error=0; }
                     else if (strcmp(lab,"CE")==0) { strcpy(display,"0"); entering=0; error=0; }
-                    else if (strcmp(lab,"+/-")==0) { if (display[0]=='-') memmove(display, display+1, strlen(display)); else if (strcmp(display,"0")!=0) { char t[128]; snprintf(t,sizeof(t),"-%s",display); strncpy(display,t,sizeof(display)-1);} }
+                    else if (strcmp(lab,"+/-")==0) { if (display[0]=='-') memmove(display, display+1, strlen(display)); else if (strcmp(display,"0")!=0) { char t[128]; snprintf(t,sizeof(t),"-%s",display); strncpy(display,t,sizeof(display)-1); display[sizeof(display)-1]='\0';} }
                     else if (strcmp(lab,"%")==0) { double v = atof(display); v = v/100.0; snprintf(display,sizeof(display),"%g",v); entering=0; }
                     else if (strcmp(lab,"=")==0) {
                         double cur = atof(display);
@@ -311,31 +311,73 @@ int x11(void) {
     int xcalc_workspace = 1;
     int xcalc_sticky = 0;
     // Main loop
+    printf("DEBUG: Starting main loop, running=%d, WindowShouldClose()=%d\n", running, WindowShouldClose());
+    fflush(stdout);
     while (running && !WindowShouldClose()) {
         frameCount++;
+        if (frameCount == 1) {
+            printf("DEBUG: First frame entered successfully\n");
+            fflush(stdout);
+        }
         
         // Begin drawing
+        if (frameCount <= 2) {
+            printf("DEBUG: About to call BeginDrawing() for frame %d\n", frameCount);
+            fflush(stdout);
+        }
         BeginDrawing();
+        if (frameCount <= 2) {
+            printf("DEBUG: BeginDrawing() completed, clearing background for frame %d\n", frameCount);
+            fflush(stdout);
+        }
         ClearBackground(x11_blue); // X11 blue background
+        if (frameCount <= 2) {
+            printf("DEBUG: ClearBackground() completed for frame %d\n", frameCount);
+            fflush(stdout);
+        }
         
         int screenWidth = GetScreenWidth();
         int screenHeight = GetScreenHeight();
         topBarH = (int)(48 * (screenHeight / 768.0f));
+        if (frameCount <= 2) {
+            printf("DEBUG: Screen size: %dx%d, topBarH: %d for frame %d\n", screenWidth, screenHeight, topBarH, frameCount);
+            fflush(stdout);
+        }
         
         // Draw FVWM-like top bar
         DrawRectangle(0, 0, screenWidth, topBarH, (Color){60, 60, 80, 255});
+        if (frameCount <= 2) {
+            printf("DEBUG: Drew top bar rectangle for frame %d\n", frameCount);
+            fflush(stdout);
+        }
         
         // Menu button (left)
         int menuBtnH = topBarH - 8;
         int menuBtnW = menuBtnH; // square button
         int menuBtnX = 8, menuBtnY = 4;
         DrawRectangle(menuBtnX, menuBtnY, menuBtnW, menuBtnH, (Color){80, 80, 120, 255});
+        if (frameCount <= 2) {
+            printf("DEBUG: About to draw menu text with guiFont for frame %d\n", frameCount);
+            fflush(stdout);
+        }
         DrawTextEx(guiFont, "≡", (Vector2){(float)(menuBtnX + menuBtnW/4), (float)(menuBtnY + menuBtnH/6)}, (float)(menuBtnH/2), 0.0f, x11_white);
+        if (frameCount <= 2) {
+            printf("DEBUG: Drew menu text successfully for frame %d\n", frameCount);
+            fflush(stdout);
+        }
         // Anchor icon position and size
         int icon_x = 32;
         int icon_y = topBarH + 32;
+        if (frameCount <= 2) {
+            printf("DEBUG: About to access logo dimensions (width=%d, height=%d) for frame %d\n", logo.width, logo.height, frameCount);
+            fflush(stdout);
+        }
         int icon_w = (int)(logo.width  * iconScale);
         int icon_h = (int)(logo.height * iconScale);
+        if (frameCount <= 2) {
+            printf("DEBUG: Calculated icon size: %dx%d for frame %d\n", icon_w, icon_h, frameCount);
+            fflush(stdout);
+        }
         // Anchor terminal window size/position if not dragging
         if (!dragging && !terminal_open) {
             termWin.x = screenWidth * 0.31f;
@@ -381,13 +423,18 @@ int x11(void) {
         // Wait a few frames before accepting input to avoid spurious startup events
         if (frameCount > 10 && IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
             Vector2 mouse = GetMousePosition();
+            printf("DEBUG: Context menu opened at frame %d, mouse at (%.1f, %.1f)\n", frameCount, mouse.x, mouse.y);
+            fflush(stdout);
             showContextMenu = 1;
             contextMenuPos = mouse;
             contextMenuSetFrame = frameCount;
         }
     // Handle left-click on context menu (ignore clicks on the same frame the menu was opened)
     // Use release so holding the button while launching the app won't immediately select an item
-        if (showContextMenu && IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && frameCount > contextMenuSetFrame) {
+    // Also wait for startup to stabilize before accepting any menu clicks
+        if (showContextMenu && frameCount > 30 && IsMouseButtonReleased(MOUSE_LEFT_BUTTON) && frameCount > contextMenuSetFrame) {
+            printf("DEBUG: Left mouse released at frame %d, menu set at frame %d\n", frameCount, contextMenuSetFrame);
+            fflush(stdout);
             Vector2 mouse = GetMousePosition();
             int menuW = 180, menuH = 32;
             int menuX = (int)contextMenuPos.x;
@@ -421,6 +468,8 @@ int x11(void) {
                 utilitiesWin.x = (screenWidth - utilitiesWin.width) / 2;
                 utilitiesWin.y = (screenHeight - utilitiesWin.height) / 2;
             } else if (CheckCollisionPointRec(mouse, exitRect)) {
+                printf("DEBUG: Exit clicked at frame %d\n", frameCount);
+                fflush(stdout);
                 running = 0;
             }
             showContextMenu = 0;
@@ -1199,7 +1248,15 @@ int x11(void) {
         /* Time and check around EndDrawing()/presentation. This helps detect
        stalls that occur during buffer swap/presentation or in the driver. */
        double __end_t0 = GetTime();
+        if (frameCount <= 2) {
+            printf("DEBUG: About to call EndDrawing() for frame %d\n", frameCount);
+            fflush(stdout);
+        }
         EndDrawing();
+        if (frameCount <= 2) {
+            printf("DEBUG: EndDrawing() completed for frame %d\n", frameCount);
+            fflush(stdout);
+        }
         
         double __end_t1 = GetTime();
         double __end_dt = __end_t1 - __end_t0;
@@ -1207,6 +1264,8 @@ int x11(void) {
             // Frame took too long - could add debug info here
         }
     } // while (running && !WindowShouldClose())
+    printf("DEBUG: Main loop exited, running=%d, WindowShouldClose()=%d\n", running, WindowShouldClose());
+    fflush(stdout);
     
     // Cleanup
     if (shell) { 
