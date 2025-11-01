@@ -95,10 +95,25 @@ SectionEnd
 
 Section "X11 GUI Source Code" SEC05
   SetOutPath "$INSTDIR\src\x11"
+  File "..\X11\libraylib.a"
   File "..\X11\main.c"
-  File "..\X11\x11.c"
   File "..\X11\Makefile"
-
+  File "..\X11\raylib.h"
+  File "..\X11\shell_win.c"
+  File "..\X11\shell_win.h"
+  File "..\X11\x11_logo.h"
+  File "..\X11\x11.c"
+  File "..\X11\x11.h"
+  File "..\X11\xcalc_logo.h"
+  File "..\X11\xcalc.c"
+  File "..\X11\xcalc.h"
+  File "..\X11\xclock_logo.h"
+  File "..\X11\xeyes_logo.h"
+  File "..\X11\xeyes.c"
+  File "..\X11\xeyes.h"
+  File "..\X11\xlogo.c"
+  File "..\X11\xlogo.h"
+  File "..\X11\xterm_logo.h"
 SectionEnd
 
 Section -AdditionalIcons

@@ -26,7 +26,7 @@
 #include "shell_win.h"
 #include "xeyes_logo.h"
 #include "xeyes.h"
-
+#include "xlogo.h"
 // --- Terminal buffer and shell process definitions ---
 #define TERM_MAX_LINES    512
 #define TERM_MAX_COLUMNS  256
@@ -305,6 +305,12 @@ int x11(void) {
     Vector2 xeyes_drag_offset = {0, 0};
     Rectangle xeyesWin = {500, 300, 240, 150};
     
+    // XLogo state
+    int xlogo_open = 0;
+    int xlogo_minimized = 0;
+    int xlogo_dragging = 0;
+    Vector2 xlogo_drag_offset = {0, 0};
+    Rectangle xlogoWin = {450, 250, 200, 200};
     // Window management
     int last_clicked = -1;
 
@@ -315,6 +321,7 @@ int x11(void) {
     const int WIN_XCLOCK = 3;
     const int WIN_UTILITIES = 4;
     const int WIN_XEYES = 5;
+    const int WIN_XLOGO = 6;
     
     // Shell process
     ChildProc* shell = NULL;
@@ -374,6 +381,11 @@ int x11(void) {
         DrawTextureEx(xeyeslogo, (Vector2){(float)xeyes_icon_x, (float)icon_y}, 0.0f, iconScale, fwvm_white);
         DrawTextEx(guiFont, "XEyes", (Vector2){(float)xeyes_icon_x, (float)(icon_y + icon_h + 4)}, 14, 0.0f, fwvm_white);
 
+        int xlogo_x = xeyes_icon_x + icon_w + 32;
+        DrawTextureEx(logo, (Vector2){(float)xlogo_x, (float)icon_y}, 0.0f, iconScale, fwvm_white);
+        DrawTextEx(guiFont, "XLogo", (Vector2){(float)xlogo_x, (float)(icon_y + icon_h + 4)}, 14, 0.0f, fwvm_white);
+
+
         // Handle right-click context menu
         if (frameCount > 60 && IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
             Vector2 mouse = GetMousePosition();
@@ -398,8 +410,9 @@ int x11(void) {
             Rectangle xclockRect = {menuX, menuY + 2*menuH, menuW, menuH};
             Rectangle utilitiesRect = {menuX, menuY + 3*menuH, menuW, menuH};
             Rectangle xeyesRect = {menuX, menuY + 4*menuH, menuW, menuH};
-            Rectangle aboutRect = {menuX, menuY + 5*menuH, menuW, menuH};
-            Rectangle exitRect = {menuX, menuY + 6*menuH, menuW, menuH};
+            Rectangle xlogoRect = {menuX, menuY + 5*menuH, menuW, menuH};
+            Rectangle aboutRect = {menuX, menuY + 6*menuH, menuW, menuH};
+            Rectangle exitRect = {menuX, menuY + 7*menuH, menuW, menuH};
             
             if (CheckCollisionPointRec(mouse, xtermRect)) {
                 if (!terminal_open) {
@@ -429,6 +442,11 @@ int x11(void) {
                 if (!xeyes_open) {
                     xeyes_open = 1;
                     last_clicked = WIN_XEYES;
+                }
+            } else if (CheckCollisionPointRec(mouse, xlogoRect)) {
+                if (!xlogo_open) {
+                    xlogo_open = 1;
+                    last_clicked = WIN_XLOGO;
                 }
             } else if (CheckCollisionPointRec(mouse, aboutRect)) {
                 // Print to console and open about window
@@ -494,6 +512,15 @@ int x11(void) {
                     last_clicked = WIN_XEYES;
                 }
             }
+
+            // XLogo icon
+            Rectangle xlogoIconRect = {(float)xlogo_x, (float)icon_y, (float)icon_w, (float)icon_h};
+            if (CheckCollisionPointRec(mouse, xlogoIconRect)) {
+                if (!xlogo_open) {
+                    xlogo_open = 1;
+                    last_clicked = WIN_XLOGO;
+                }
+            }
         }
 
         // Draw FWVM 3.x flat context menu
@@ -504,24 +531,21 @@ int x11(void) {
             
             // Clamp menu to screen
             if (menuX + menuW > screenWidth) menuX = screenWidth - menuW - 8;
-            if (menuY + menuH * 5 > screenHeight) menuY = screenHeight - menuH * 5 - 8;
+            if (menuY + menuH * 8 > screenHeight) menuY = screenHeight - menuH * 8 - 8;
             
-            // Modern flat menu styling
-            DrawRectangle(menuX, menuY, menuW, menuH * 5, fwvm_light_gray);
-            DrawRectangleLines(menuX, menuY, menuW, menuH * 5, fwvm_border);
-            
-            // Add subtle shadows for depth
-            DrawRectangle(menuX + 2, menuY + 2, menuW, menuH * 7, (Color){0, 0, 0, 50});
-            DrawRectangle(menuX, menuY, menuW, menuH * 7, fwvm_light_gray);
-            DrawRectangleLines(menuX, menuY, menuW, menuH * 7, fwvm_border);
+            // Modern flat menu styling with shadow
+            DrawRectangle(menuX + 2, menuY + 2, menuW, menuH * 8, (Color){0, 0, 0, 50});
+            DrawRectangle(menuX, menuY, menuW, menuH * 8, fwvm_light_gray);
+            DrawRectangleLines(menuX, menuY, menuW, menuH * 8, fwvm_border);
             
             DrawTextEx(guiFont, "Terminal", (Vector2){(float)(menuX + 8), (float)(menuY + 8)}, 16, 0.0f, fwvm_dark_gray);
             DrawTextEx(guiFont, "Calculator", (Vector2){(float)(menuX + 8), (float)(menuY + menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
             DrawTextEx(guiFont, "Clock", (Vector2){(float)(menuX + 8), (float)(menuY + 2*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
             DrawTextEx(guiFont, "Utilities", (Vector2){(float)(menuX + 8), (float)(menuY + 3*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
             DrawTextEx(guiFont, "XEyes", (Vector2){(float)(menuX + 8), (float)(menuY + 4*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
-            DrawTextEx(guiFont, "About FWVM 3.x", (Vector2){(float)(menuX + 8), (float)(menuY + 5*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
-            DrawTextEx(guiFont, "Exit", (Vector2){(float)(menuX + 8), (float)(menuY + 6*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
+            DrawTextEx(guiFont, "XLogo", (Vector2){(float)(menuX + 8), (float)(menuY + 5*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
+            DrawTextEx(guiFont, "About FWVM 3.x", (Vector2){(float)(menuX + 8), (float)(menuY + 6*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
+            DrawTextEx(guiFont, "Exit", (Vector2){(float)(menuX + 8), (float)(menuY + 7*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
         }
 
         // Draw FWVM 3.x flat terminal window
@@ -811,6 +835,11 @@ int x11(void) {
         draw_xeyes_window(&xeyesWin, &xeyes_open, &xeyes_minimized, &xeyes_dragging, &xeyes_drag_offset,
                          &last_clicked, WIN_XEYES, guiFont, screenWidth, screenHeight);
 
+        // Draw XLogo window
+        draw_xlogo_window(&xlogoWin, &xlogo_open, &xlogo_minimized, &xlogo_dragging, &xlogo_drag_offset,
+                         &focused_window, guiFont, logo, fwvm_bg, fwvm_white, fwvm_dark_gray,
+                         fwvm_accent, WIN_XLOGO, &last_clicked, screenWidth, screenHeight);
+
         // Draw FWVM 3.x Utilities window
         if (utilities_open && !utilities_minimized) {
             int border = 1;
@@ -979,6 +1008,7 @@ int x11(void) {
             xclock_dragging = 0;
             utilities_dragging = 0;
             about_dragging = 0;
+            xlogo_dragging = 0;
         }
 
         // Draw FWVM 3.x modern taskbar
@@ -1014,13 +1044,16 @@ int x11(void) {
         DestroyChildProc(shell);
         shell = NULL;
     }
-    
+
+    printf("waiting for X server to shut down .\n");
+
     UnloadTexture(logo);
     UnloadTexture(xtermlogo);
     UnloadTexture(xclocklogo);
     UnloadTexture(xcalclogo);
     UnloadFont(guiFont);
     CloseWindow();
+    printf("INFO: Server terminated successfully\n");
     
     return 0;
 }
