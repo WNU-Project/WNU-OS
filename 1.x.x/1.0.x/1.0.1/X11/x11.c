@@ -199,6 +199,7 @@ static void draw_xcalc_widget(Rectangle *xcalcWin, int *xcalc_open, int *xcalc_m
         DrawTextEx(guiFont, "xcalc", (Vector2){(float)minIconX, (float)(minIconY + (int)(xcalclogo.height*0.18f) + 4)}, 14.0f, 0.0f, (Color){30,30,40,255});
     }
 }
+bool isFullscreen = false;
 
 int x11(void) {
     // Print OS it was build for and get the OS version
@@ -212,8 +213,8 @@ int x11(void) {
     printf("Build Operating System: Windows 10.0.26200\n");
     printf("Current Operating System: Windows %lu.%lu.%lu\n", osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber);
     // Initialize raylib with FWVM 3.x branding
-    const int screenWidth = 1024;
-    const int screenHeight = 768;
+    int screenWidth = 1024;
+    int screenHeight = 768;
     InitWindow(screenWidth, screenHeight, "X11 Desktop");
     SetTargetFPS(60);
 
@@ -333,6 +334,25 @@ int x11(void) {
     while (running && !WindowShouldClose()) {
         frameCount++;
 
+        // Handle fullscreen toggle (F11 key)
+        if (IsKeyPressed(KEY_F11)) {
+            isFullscreen = !isFullscreen;
+            if (isFullscreen) {
+                // Get monitor size and switch to fullscreen
+                int monitor = GetCurrentMonitor();
+                screenWidth = GetMonitorWidth(monitor);
+                screenHeight = GetMonitorHeight(monitor);
+                SetWindowSize(screenWidth, screenHeight);
+                ToggleFullscreen();
+            } else {
+                // Switch back to windowed mode
+                ToggleFullscreen();
+                screenWidth = 1024;
+                screenHeight = 768;
+                SetWindowSize(screenWidth, screenHeight);
+            }
+        }
+
         // Begin drawing
         BeginDrawing();
         
@@ -344,6 +364,11 @@ int x11(void) {
         DrawRectangle(0, 0, screenWidth, topBarH, fwvm_taskbar);
         DrawRectangle(0, topBarH-1, screenWidth, 1, fwvm_border); // Subtle border
         DrawTextEx(guiFont, "X11 Desktop", (Vector2){10, 12}, 20, 0.0f, fwvm_white);
+        
+        // Show fullscreen toggle hint
+        const char* fullscreenHint = isFullscreen ? "F11: Exit Fullscreen" : "F11: Fullscreen";
+        Vector2 hintSize = MeasureTextEx(guiFont, fullscreenHint, 14, 0.0f);
+        DrawTextEx(guiFont, fullscreenHint, (Vector2){screenWidth - hintSize.x - 10, 16}, 14, 0.0f, fwvm_white);
         
         // Draw desktop icons
         float iconScale = 0.18f;

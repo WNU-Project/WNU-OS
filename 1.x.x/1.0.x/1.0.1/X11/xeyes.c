@@ -42,7 +42,7 @@ void draw_xeyes_window(Rectangle *xeyesWin, int *xeyes_open, int *xeyes_minimize
         // Modern flat title bar
         DrawRectangle((int)xeyesWin->x + border, (int)xeyesWin->y + border, 
                      (int)xeyesWin->width - 2*border, titleH, fwvm_taskbar);
-        DrawTextEx(guiFont, "FWVM XEyes 3.x", (Vector2){xeyesWin->x + border + 12, xeyesWin->y + border + 8}, 
+        DrawTextEx(guiFont, "xeyes", (Vector2){xeyesWin->x + border + 12, xeyesWin->y + border + 8}, 
                   16, 0.0f, fwvm_white);
         
         // Modern flat close button

@@ -202,6 +202,7 @@ SectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC02} "Source code files for developers"
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC03} "WSYS2 Package Manager executable"
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC04} "WSYS2 Package Manager source code"
+  !insertmacro MUI_DESCRIPTION_TEXT ${SEC05} "X11 Graphical Interface source code"
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 # PATH manipulation functions

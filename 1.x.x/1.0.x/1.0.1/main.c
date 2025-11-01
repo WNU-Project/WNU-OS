@@ -5,6 +5,7 @@
 #include <lmcons.h>  // for UNLEN
 #include <conio.h>   // for _getch function
 #include <time.h>
+#include <stdbool.h> // for bool, true, false
 #include "boot.h"
 #include "userlogin.h"
 #include "poweroff.h"
@@ -361,6 +362,7 @@ int main(void) {
         if (strcmp(target, "Graphical") == 0) {
             printf("Starting graphical interface...\n");
             Sleep(1000);
+            isFullscreen = true;
             x11(); // Start X11 graphical interface
             system("cls");
             poweroff_sequence();
@@ -911,6 +913,7 @@ int main(void) {
         }
         else if (strcmp(command, "startx") == 0) {
             printf("Starting graphical environment...\n");
+            isFullscreen = true;
             x11();
         }
         else if (strcmp(command, "fastfetch") == 0) {
