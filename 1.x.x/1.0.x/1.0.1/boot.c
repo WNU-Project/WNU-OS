@@ -5,6 +5,7 @@
 #include <stdlib.h>   // for rand, srand
 #include <time.h>     // for seeding srand
 #include "boot.h"
+#include "bootloader/wub.h"
 
 double get_unix_epoch_seconds() {
     FILETIME ft;
@@ -51,11 +52,16 @@ void choose_target() {
     }
 }
 
-void boot_sequence() {
+int boot_sequence() {
     // Seed RNG once per boot
     srand((unsigned int)time(NULL));
 
     double t = get_unix_epoch_seconds();
+
+    if (wub() != 0) {
+        printf("Bootloader error. Halting boot sequence.\n");
+        return 1;
+    }
     
     // Binary representation of "START WNU OS 1.0.0 systemd BOOTUP (KERNEL: WNU Kernel 1.0.1)"
     char* binary = "01010011 01010100 01000001 01010010 01010100 00100000 01010111 01001110 01010101 00100000 01001111 01010011 00100000 00110001 00101110 00110000 00101110 00110000 00100000 01110011 01111001 01110011 01110100 01100101 01101101 01100100 00100000 01000010 01001111 01001111 01010100 01010101 01010000 00100000 00101000 01001011 01000101 01010010 01001110 01000101 01001100 00111010 00100000 01010111 01001110 01010101 00100000 01001011 01100101 01110010 01101110 01100101 01101100 00100000 00110001 00101110 00110000 00101110 00110001 00101001";

@@ -7,7 +7,8 @@ SHELL_TARGET = wnuos.exe
 
 # Source files
 SHELL_SRCS = main.c boot.c userlogin.c poweroff.c halt.c reboot.c \
-			 wsys2/wsys2.c wsys2/package.c tty_session.c motd.c X11/x11.c X11/shell_win.c fastfetch.c X11/xcalc.c X11/xeyes.c X11/xlogo.c
+			 wsys2/wsys2.c wsys2/package.c tty_session.c motd.c X11/x11.c X11/shell_win.c fastfetch.c X11/xcalc.c X11/xeyes.c X11/xlogo.c \
+			 bootloader/wub.c
 SHELL_OBJS = $(SHELL_SRCS:.c=.o)
 
 # Libraries
@@ -29,5 +30,8 @@ $(SHELL_TARGET): $(SHELL_OBJS)
 clean:
 	@echo Cleaning build artifacts...
 	-@del "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.1\*.o"
+	-@del "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.1\bootloader\*.o"
+	-@del "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.1\wsys2\*.o"
+	-@del "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.1\X11\*.o"
 
 .PHONY: all clean

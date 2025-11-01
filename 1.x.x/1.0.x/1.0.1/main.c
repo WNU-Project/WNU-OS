@@ -265,7 +265,11 @@ int main(void) {
     }
 
     // Run boot sequence
-    boot_sequence();
+    if (boot_sequence() == 0) {
+        /*Go To Login*/
+    } else {
+        exit(1);
+    }
     while (1) {
          // Get current Windows username
         if (!GetUserNameA(current_user, &user_len)) {

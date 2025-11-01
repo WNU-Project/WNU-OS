@@ -79,8 +79,8 @@ gcc -std=c11 -o wnuos.exe main.c boot.c userlogin.c poweroff.c halt.c reboot.c w
 
 | Version | Status | Features |
 |---------|--------|----------|
+| 1.0.1 Update 1 | 📦 Released | WSYS2 |
 | **1.0.1 Update 2** | ✅ **Current** | X11 Desktop, WSYS2 Package Manager, TTY Sessions, Fullscreen Support |
-| 1.0.1 Update 1 | 📦 Released | Enhanced authentication, WSYS2, TTY management, fastfetch |
 | 1.0.0 | 📦 Released | Full authentication, custom ls, colored prompts, system management |
 | 1.0.1 Update 3 | 🔄 Planned | Enhanced desktop apps, improved package management |
 | 1.1.x | 📋 Roadmap | Command history, tab completion, advanced scripting |
