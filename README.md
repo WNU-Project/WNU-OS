@@ -79,10 +79,12 @@ gcc -std=c11 -o wnuos.exe main.c boot.c userlogin.c poweroff.c halt.c reboot.c w
 
 | Version | Status | Features |
 |---------|--------|----------|
-| **1.0.1** | ✅ **Current** | Full authentication, custom ls, colored prompts, system management |
-| 1.1.x | 🔄 Planned | Enhanced file operations, command history, tab completion |
-| 1.2.x | 📋 Roadmap | Pipes & redirection, environment variables, scripting |
-| 2.0.x | 🌟 Future | Advanced process management, networking tools |
+| **1.0.1 Update 2** | ✅ **Current** | X11 Desktop, WSYS2 Package Manager, TTY Sessions, Fullscreen Support |
+| 1.0.1 Update 1 | 📦 Released | Enhanced authentication, WSYS2, TTY management, fastfetch |
+| 1.0.0 | 📦 Released | Full authentication, custom ls, colored prompts, system management |
+| 1.0.1 Update 3 | 🔄 Planned | Enhanced desktop apps, improved package management |
+| 1.1.x | 📋 Roadmap | Command history, tab completion, advanced scripting |
+| 2.0.x | 🌟 Future | Network tools, process management, multi-user GUI |
 
 ## 🛠️ Development
 
@@ -110,11 +112,12 @@ gcc -std=c11 -o wnuos.exe main.c boot.c userlogin.c poweroff.c halt.c reboot.c w
 
 ## 🔧 Technical Stack
 
-- **Language**: C (Native Windows compilation)
-- **APIs**: Windows Authentication, File System, Console
-- **Compiler**: GCC (MinGW recommended)  
-- **Target**: Windows 10/11 with ANSI color support
-- **Dependencies**: Windows SDK, standard C libraries
+- **Language**: C11 Standard (Native Windows compilation)
+- **Graphics**: raylib 5.5 for X11 desktop environment
+- **APIs**: Windows Authentication, File System, Console, Graphics
+- **Compiler**: GCC with MinGW64 (C11 standard)  
+- **Target**: Windows 10/11 with OpenGL support
+- **Dependencies**: Windows SDK, raylib, standard C libraries
 
 ## 🌍 Community
 
