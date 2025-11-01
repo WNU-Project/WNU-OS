@@ -30,7 +30,7 @@ WNU OS/
 └── [Future versions...]        # Planned releases
 ```
 
-## 🚀 Current Release: Version 1.0.0
+## 🚀 Current Release: Version 1.0.1 Update 2
 
 ### Key Features
 
@@ -39,22 +39,30 @@ WNU OS/
 - 🛠️ **Built-in Commands** - `ls`, `cd`, `pwd`, `whoami`, `su`, system control
 - ⚡ **System Management** - Boot sequences, graceful shutdown, interrupt handling
 - 🛡️ **Enterprise Security** - Multi-layer authentication with fallback methods
+- 🖥️ **X11 Desktop Environment** - Full graphical interface with FWVM 3.x design
+- 📦 **WSYS2 Package Manager** - Install and manage .wnupkg packages
+- 🔄 **TTY Session Management** - Switch between multiple terminal sessions
+- 🌐 **Graphical Applications** - Calculator, Clock, XEyes, XLogo, and more
 
-### What's New in 1.0.0
+### What's New in 1.0.1 Update 2
 
-- Complete custom `ls` implementation with `-a` and `-l` flags
-- Advanced Windows Hello PIN integration
-- Colored prompts (green for users, plain for root)
-- Getty-style login screen with authentic Unix feel
-- Comprehensive system control with interrupt handling
+- **Complete X11 Desktop Environment** with modern FWVM 3.x flat design
+- **Fullscreen Support** - Press F11 to toggle fullscreen mode in desktop
+- **XLogo Application** - Display the X11 logo with proper window management
+- **Enhanced Desktop Applications** - Calculator, Clock, XEyes with consistent styling
+- **Improved Package Manager** - WSYS2 with online repository support
+- **TTY Session Switching** - Use `switch tty <number>` to manage multiple sessions
+- **Fastfetch System Info** - Display detailed system information
+- **Developer Notes** - Special `devsnote` command for project insights
 
 ## 📋 Quick Start
 
 ### Installation
 
 1. **Download** the latest release from `/1.x.x/1.0.x/1.0.1/`
-2. **Run** `WNU OS-1.0.0-win64.exe` or build from source
+2. **Run** `WNU OS-1.0.1-Update2-win64.exe` or build from source
 3. **Login** as `root` (no password) or use your Windows credentials
+4. **Start GUI** with `startx` command for full desktop experience
 
 ### Building from Source
 
