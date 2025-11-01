@@ -914,6 +914,7 @@ int main(void) {
             x11();
         }
         else if (strcmp(command, "fastfetch") == 0) {
+            snprintf(username_str, sizeof(username_str), "%s", username);
             fastfetch();
         }
         else if (strlen(command) > 0) {

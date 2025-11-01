@@ -378,7 +378,8 @@ int x11(void) {
         }
 
         // Handle right-click anywhere (for easier testing)
-        if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
+        // Wait a few frames before accepting input to avoid spurious startup events
+        if (frameCount > 10 && IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
             Vector2 mouse = GetMousePosition();
             showContextMenu = 1;
             contextMenuPos = mouse;

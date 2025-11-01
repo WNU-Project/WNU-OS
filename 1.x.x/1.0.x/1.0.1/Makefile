@@ -14,7 +14,7 @@ SHELL_OBJS = $(SHELL_SRCS:.c=.o)
 SHELL_LIBS = -LX11 -lraylib -lopengl32 -lgdi32 -luser32 -ladvapi32 -lnetapi32 -lkernel32 -lwininet -lws2_32 -lwinmm
 
 # Default build
-all: $(SHELL_TARGET) $(GUI_TARGET)
+all: clean $(SHELL_TARGET) $(GUI_TARGET)
 
 # Build shell (console app)
 $(SHELL_TARGET): $(SHELL_OBJS)
@@ -28,6 +28,6 @@ $(SHELL_TARGET): $(SHELL_OBJS)
 # Clean build artifacts
 clean:
 	@echo Cleaning build artifacts...
-	-@del /Q $(SHELL_OBJS) $(SHELL_TARGET) 2>nul
+	-@del "C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\1.x.x\1.0.x\1.0.1\*.o"
 
 .PHONY: all clean

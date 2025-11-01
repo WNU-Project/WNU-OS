@@ -1,20 +1,75 @@
 // WNU OS VERSION OF FASTFETCH
 #include <windows.h> // NEEDED TO GET WINDOWS VERSION
 #include <stdio.h>   // For printf
+#include <time.h>    // For uptime calculation
+#include <psapi.h>   // For memory info
 
 // Ensure ENABLE_VIRTUAL_TERMINAL_PROCESSING is defined for older Windows SDKs
 #ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
 #define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
 #endif
 
+// Provide a fallback for PROCESSOR_ARCHITECTURE_ARM64 for older Windows SDKs
+#ifndef PROCESSOR_ARCHITECTURE_ARM64
+#define PROCESSOR_ARCHITECTURE_ARM64 12
+#endif
+
+// Helper functions for system info
+void get_uptime(char* buffer, size_t size) {
+    ULONGLONG uptime_ms = GetTickCount64();
+    ULONGLONG hours = uptime_ms / (1000 * 60 * 60);
+    ULONGLONG minutes = (uptime_ms % (1000 * 60 * 60)) / (1000 * 60);
+    snprintf(buffer, size, "%llu hours, %llu minutes", hours, minutes);
+}
+
+void get_memory_info(char* buffer, size_t size) {
+    MEMORYSTATUSEX mem_info;
+    mem_info.dwLength = sizeof(MEMORYSTATUSEX);
+    if (GlobalMemoryStatusEx(&mem_info)) {
+        ULONGLONG total_mb = mem_info.ullTotalPhys / (1024 * 1024);
+        ULONGLONG used_mb = (mem_info.ullTotalPhys - mem_info.ullAvailPhys) / (1024 * 1024);
+        snprintf(buffer, size, "%llu MiB / %llu MiB (%lu%%)", used_mb, total_mb, mem_info.dwMemoryLoad);
+    } else {
+        snprintf(buffer, size, "Unable to retrieve memory info");
+    }
+}
+
+void get_cpu_info(char* buffer, size_t size) {
+    HKEY hKey;
+    if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, 
+                     "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0", 
+                     0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+        char cpu_name[256];
+        DWORD cpu_name_size = sizeof(cpu_name);
+        if (RegQueryValueEx(hKey, "ProcessorNameString", NULL, NULL, 
+                           (LPBYTE)cpu_name, &cpu_name_size) == ERROR_SUCCESS) {
+            // Trim leading spaces
+            char* trimmed = cpu_name;
+            while (*trimmed == ' ') trimmed++;
+            snprintf(buffer, size, "%s", trimmed);
+        } else {
+            snprintf(buffer, size, "Unknown CPU");
+        }
+        RegCloseKey(hKey);
+    } else {
+        snprintf(buffer, size, "Unable to retrieve CPU info");
+    }
+}
+
+void get_resolution(char* buffer, size_t size) {
+    int width = GetSystemMetrics(SM_CXSCREEN);
+    int height = GetSystemMetrics(SM_CYSCREEN);
+    snprintf(buffer, size, "%dx%d", width, height);
+}
+
+void get_hostname(char* buffer, size_t size) {
+    DWORD hostname_size = size;
+    if (!GetComputerName(buffer, &hostname_size)) {
+        snprintf(buffer, size, "Unknown");
+    }
+}
+
 // Fallback WNU logo (simple ASCII for non-Win10/11)
-const char* wnu_fallback_logo = 
-    "\033[32m"  // Green
-    "  ___   _    _ \n"
-    " / _ \\ | |  | |\n"
-    "| (_) || |__| | WNU OS\n"
-    " \\___/ |_____/ v1.0.1\n"
-    "\033[0m";    // Reset
 
 int fastfetch() {
     // Enable ANSI colors in console
@@ -38,6 +93,7 @@ int fastfetch() {
     GetSystemInfo(&si);
 
     char* windows_version_logo = NULL;
+    char* windows_nt_version = NULL;
     if (osvi.dwMajorVersion == 10 && osvi.dwMinorVersion == 0) {
         if (osvi.dwBuildNumber >= 22000) {
             // Win11-specific logo: Split into adjacent strings for multi-line
@@ -96,6 +152,7 @@ int fastfetch() {
                                    "....................................................................................................\n"
                                    "....................................................................................................\n"
                                    ". .... ........ ..... ... .......... ... ..... .... .... .... .... ......... .... ... ..... .... ...\033[0m";
+            windows_nt_version = "10";
         } else if (osvi.dwBuildNumber >= 10240) {
             // Win10 (2004+)-specific logo: Fixed concatenation and completed partial art
             // (Original was truncated/incomplete; simplified to a clean Windows 10 wave for consistency)
@@ -151,20 +208,54 @@ int fastfetch() {
                                    "                                                     ...:-=+*******************************+\n"
                                    "                                                               .....::-=+*******************+\n"
                                    "                                                                             ...::-==++****+:\n"
-                                   "                                                                                             .:-==+:\033[0m";
+                                   "                                                                                            .:-==+:\033[0m";
+            windows_nt_version = "10"; 
         }
     }
 
     // Print logo (Win10/11 or fallback)
     if (windows_version_logo) {
         printf("%s\n", windows_version_logo);
-    } else {
-        printf("%s\n", wnu_fallback_logo);
     }
 
-    printf("WNU OS Version: 1.0.1\n");
-    printf("Windows Version: %d.%d Build %d\n", osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber);
-    printf("System Architecture: %s\n", (si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) ? "x64" : "x86");
+    // Get system information
+    char uptime_str[256];
+    char memory_str[256]; 
+    char cpu_str[256];
+    char resolution_str[64];
+    char username_str[256];
+    char hostname_str[256];
+    
+    get_uptime(uptime_str, sizeof(uptime_str));
+    get_memory_info(memory_str, sizeof(memory_str));
+    get_cpu_info(cpu_str, sizeof(cpu_str));
+    get_resolution(resolution_str, sizeof(resolution_str));
+    get_hostname(hostname_str, sizeof(hostname_str));
+
+    // Architecture info
+    const char* arch = "Unknown";
+    switch (si.wProcessorArchitecture) {
+        case PROCESSOR_ARCHITECTURE_AMD64: arch = "x86_64"; break;
+        case PROCESSOR_ARCHITECTURE_INTEL: arch = "x86"; break;
+        case PROCESSOR_ARCHITECTURE_ARM64: arch = "ARM64"; break;
+        case PROCESSOR_ARCHITECTURE_ARM: arch = "ARM"; break;
+    }
+
+    printf("\033[36m%s\033[37m@\033[36m%s\033[0m\n", username_str, hostname_str);
+    printf("\033[36m-\033[0m%.40s\n", "----------------------------------------");
+    printf("\033[36mOS\033[0m: Windows %lu.%lu.%lu %s\n", osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber, arch);
+    printf("\033[36mKernel\033[0m: Windows NT %s\n", windows_nt_version ? windows_nt_version : "Unknown");
+    printf("\033[36mUptime\033[0m: %s\n", uptime_str);
+    printf("\033[36mPackages\033[0m: (WNU Package Manager coming soon)\n");
+    printf("\033[36mShell\033[0m: WNU OS Shell (bash)\n");
+    printf("\033[36mResolution\033[0m: %s\n", resolution_str);
+    printf("\033[36mDE\033[0m: X11\n");
+    printf("\033[36mWM\033[0m: FVWM\n");
+    printf("\033[36mTheme\033[0m: Raylib Theme\n");
+    printf("\033[36mIcons\033[0m: X11 Icons \n");
+    printf("\033[36mCPU\033[0m: %s (%lu cores)\n", cpu_str, si.dwNumberOfProcessors);
+    printf("\033[36mGPU\033[0m: (GPU detection coming soon)\n");
+    printf("\033[36mMemory\033[0m: %s\n", memory_str);
     
     return 0;
 }
