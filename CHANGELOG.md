@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Real font loading from `C:/Windows/Fonts/` directory
   - Click-to-select fonts with visual selection indicator
   - Integrated into X11 desktop with icon and context menu
-- **UTF-8 Unicode Support in XTerm** - Terminal now displays Unicode characters correctly
+  - **UTF-8 Unicode Support in XTerm** - Terminal displays Unicode characters
   - Support for emojis, special symbols, non-English characters
   - UTF-8 multi-byte sequence preservation
   - Box drawing characters for enhanced terminal UI
