@@ -7,6 +7,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1.update.2] - 2025-11-02
+
+### Added
+
+#### X11 Desktop Environment
+
+- **XFontsel** - Complete font selector application with live preview
+  - Font list with scrolling support for 10 Windows system fonts
+  - Live preview panel showing selected font in multiple sizes
+  - Font size control (8-72pt) with UP/DOWN or +/- keys
+  - Sample text display: "The quick brown fox jumps over the lazy dog"
+  - Character preview: ABC, abc, 123 in large size
+  - Real font loading from `C:/Windows/Fonts/` directory
+  - Click-to-select fonts with visual selection indicator
+  - Integrated into X11 desktop with icon and context menu
+- **UTF-8 Unicode Support in XTerm** - Terminal now displays Unicode characters correctly
+  - Support for emojis, special symbols, non-English characters
+  - UTF-8 multi-byte sequence preservation
+  - Box drawing characters for enhanced terminal UI
+
+#### Bootloader System
+
+- **WNU Virtual PC (WNU-VPC)** - Virtual machine boot environment
+  - ASCII art logo display with proper formatting
+  - Animated progress bar (0-100%) during boot sequence
+  - ESC key support to access BIOS settings (placeholder)
+  - Loading screen with status messages
+  - Windows API integration for timing and keyboard input
+- **Enhanced Boot Sequence** - Improved multi-stage bootloader
+  - BIOS → WUB → WNU-VPC boot chain support
+  - Better error handling and user feedback
+
+### Technical Details
+
+#### X11 Desktop Integration
+
+- Added `xfontsel.h` and `xfontsel.c` to X11 system
+- Window management with dragging, closing, and minimize support
+- Modern flat FWVM-style window design matching other X11 apps
+- Icon click handler on desktop ("ABC" icon)
+- Context menu integration ("Font Selector" entry)
+- Window constant `WIN_XFONTSEL = 7` for focus management
+
+#### Unicode Terminal Implementation
+
+```c
+// UTF-8 safe character filtering
+unsigned char ch = (unsigned char)readBuf[i];
+if (ch < 32 && ch != '\n' && ch != '\r' && ch != '\t') {
+    readBuf[i] = ' '; // Only filter ASCII control chars
+}
+// Bytes >= 0x80 preserved for UTF-8 multi-byte sequences
+```
+
+#### WNU-VPC Boot Sequence
+
+```c
+// Progress bar with ESC interrupt
+for (int i = 0; i <= 100; i += 1) {
+    printf("\r Progress: %d%%", i);
+    if (_kbhit() && _getch() == 27) {
+        printf("THIS WILL BE THE BIOS SETTINGS\n");
+        return 0;
+    }
+}
+```
+
+### Build System
+
+- Added `xfontsel.c` to X11 Makefile compilation targets
+- Added `wnu-vpc.c` to main Makefile with proper dependency tracking
+- Linked Windows API libraries: `<windows.h>`, `<conio.h>` for WNU-VPC
+
+
 ## [1.0.1.update.1] - 2025-10-15
 
 ### Added
