@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Bootloader System
 
-- **WNU Virtual PC (WNU-VPC)** - Virtual machine boot environment
+- **WNU Virtual PC (WNU-VPC)** - Virtual machine-like boot environment
   - ASCII art logo display with proper formatting
   - Animated progress bar (0-100%) during boot sequence
   - ESC key support to access BIOS settings (placeholder)
