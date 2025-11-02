@@ -27,6 +27,7 @@
 #include "xeyes_logo.h"
 #include "xeyes.h"
 #include "xlogo.h"
+#include "xfontsel.h"
 // --- Terminal buffer and shell process definitions ---
 #define TERM_MAX_LINES    512
 #define TERM_MAX_COLUMNS  256
@@ -251,6 +252,8 @@ int x11(void) {
     Color fwvm_hover = {70, 130, 180, 255};      // Hover state blue
     Color fwvm_term_bg = {12, 12, 12, 255};      // Terminal background
     Color fwvm_term_fg = {204, 204, 204, 255};   // Terminal text
+    Color fwvm_black = {0, 0, 0, 255};
+    Color fwvm_gray = {100, 100, 100, 255};
 
     // State variables
     int running = 1;
@@ -312,6 +315,14 @@ int x11(void) {
     int xlogo_dragging = 0;
     Vector2 xlogo_drag_offset = {0, 0};
     Rectangle xlogoWin = {450, 250, 200, 200};
+    
+    // XFontsel state
+    int xfontsel_open = 0;
+    int xfontsel_minimized = 0;
+    int xfontsel_dragging = 0;
+    Vector2 xfontsel_drag_offset = {0, 0};
+    Rectangle xfontselWin = {400, 200, 700, 500};
+    
     // Window management
     int last_clicked = -1;
 
@@ -323,6 +334,7 @@ int x11(void) {
     const int WIN_UTILITIES = 4;
     const int WIN_XEYES = 5;
     const int WIN_XLOGO = 6;
+    const int WIN_XFONTSEL = 7;
     
     // Shell process
     ChildProc* shell = NULL;
@@ -409,6 +421,9 @@ int x11(void) {
         int xlogo_x = xeyes_icon_x + icon_w + 32;
         DrawTextureEx(logo, (Vector2){(float)xlogo_x, (float)icon_y}, 0.0f, iconScale, fwvm_white);
         DrawTextEx(guiFont, "XLogo", (Vector2){(float)xlogo_x, (float)(icon_y + icon_h + 4)}, 14, 0.0f, fwvm_white);
+        int xfontsel_x = xlogo_x + icon_w + 32;
+        DrawTextEx(guiFont, "ABC", (Vector2){(float)xfontsel_x, (float)(icon_y + (int)(icon_h * 0.18f) / 2)}, 32.0f, 0.0f, fwvm_white);
+        DrawTextEx(guiFont, "Font Selector", (Vector2){(float)xfontsel_x, (float)(icon_y + icon_h + 4)}, 14, 0.0f, fwvm_white);
 
 
         // Handle right-click context menu
@@ -436,15 +451,34 @@ int x11(void) {
             Rectangle utilitiesRect = {menuX, menuY + 3*menuH, menuW, menuH};
             Rectangle xeyesRect = {menuX, menuY + 4*menuH, menuW, menuH};
             Rectangle xlogoRect = {menuX, menuY + 5*menuH, menuW, menuH};
-            Rectangle aboutRect = {menuX, menuY + 6*menuH, menuW, menuH};
-            Rectangle exitRect = {menuX, menuY + 7*menuH, menuW, menuH};
+            Rectangle xfontselRect = {menuX, menuY + 6*menuH, menuW, menuH};
+            Rectangle aboutRect = {menuX, menuY + 7*menuH, menuW, menuH};
+            Rectangle exitRect = {menuX, menuY + 8*menuH, menuW, menuH};
             
             if (CheckCollisionPointRec(mouse, xtermRect)) {
                 if (!terminal_open) {
                     terminal_open = 1;
                     if (!shell) {
                         shell = CreateChildProc();
-                        LaunchShell(shell, "C:\\WNU\\WNU OS\\wnuos.exe");
+                        // Try multiple possible paths for the WNU OS executable
+                        int launchSuccess = 0;
+                        const char* possiblePaths[] = {
+                            ".\\wnuos.exe",  // Current directory
+                            "wnuos.exe",     // PATH lookup
+                            "C:\\WNU\\WNU OS\\wnuos.exe",  // Original path
+                            "cmd.exe"        // Fallback to cmd.exe
+                        };
+                        
+                        for (int i = 0; i < 4 && !launchSuccess; i++) {
+                            if (LaunchShell(shell, possiblePaths[i])) {
+                                launchSuccess = 1;
+                                printf("Terminal launched with: %s\n", possiblePaths[i]);
+                            }
+                        }
+                        
+                        if (!launchSuccess) {
+                            printf("Failed to launch any shell executable\n");
+                        }
                     }
                     last_clicked = WIN_TERM;
                 }
@@ -473,6 +507,11 @@ int x11(void) {
                     xlogo_open = 1;
                     last_clicked = WIN_XLOGO;
                 }
+            } else if (CheckCollisionPointRec(mouse, xfontselRect)) {
+                if (!xfontsel_open) {
+                    xfontsel_open = 1;
+                    last_clicked = WIN_XFONTSEL;
+                }
             } else if (CheckCollisionPointRec(mouse, aboutRect)) {
                 // Print to console and open about window
                 printf("About X11: WNUOS GUI X11 WM: FVWM 3.x Made In: The C Programming Language Made With: raylib 5.5\n");
@@ -496,7 +535,25 @@ int x11(void) {
                     terminal_open = 1;
                     if (!shell) {
                         shell = CreateChildProc();
-                        LaunchShell(shell, "C:\\WNU\\WNU OS\\wnuos.exe");
+                        // Try multiple possible paths for the WNU OS executable
+                        int launchSuccess = 0;
+                        const char* possiblePaths[] = {
+                            ".\\wnuos.exe",  // Current directory
+                            "wnuos.exe",     // PATH lookup
+                            "C:\\WNU\\WNU OS\\wnuos.exe",  // Original path
+                            "cmd.exe"        // Fallback to cmd.exe
+                        };
+                        
+                        for (int i = 0; i < 4 && !launchSuccess; i++) {
+                            if (LaunchShell(shell, possiblePaths[i])) {
+                                launchSuccess = 1;
+                                printf("Terminal launched with: %s\n", possiblePaths[i]);
+                            }
+                        }
+                        
+                        if (!launchSuccess) {
+                            printf("Failed to launch any shell executable\n");
+                        }
                     }
                     last_clicked = WIN_TERM;
                 }
@@ -546,6 +603,15 @@ int x11(void) {
                     last_clicked = WIN_XLOGO;
                 }
             }
+
+            // XFontsel icon
+            Rectangle xfontselIconRect = {(float)xfontsel_x, (float)icon_y, (float)icon_w, (float)icon_h};
+            if (CheckCollisionPointRec(mouse, xfontselIconRect)) {
+                if (!xfontsel_open) {
+                    xfontsel_open = 1;
+                    last_clicked = WIN_XFONTSEL;
+                }
+            }
         }
 
         // Draw FWVM 3.x flat context menu
@@ -569,8 +635,9 @@ int x11(void) {
             DrawTextEx(guiFont, "Utilities", (Vector2){(float)(menuX + 8), (float)(menuY + 3*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
             DrawTextEx(guiFont, "XEyes", (Vector2){(float)(menuX + 8), (float)(menuY + 4*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
             DrawTextEx(guiFont, "XLogo", (Vector2){(float)(menuX + 8), (float)(menuY + 5*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
-            DrawTextEx(guiFont, "About FWVM 3.x", (Vector2){(float)(menuX + 8), (float)(menuY + 6*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
-            DrawTextEx(guiFont, "Exit", (Vector2){(float)(menuX + 8), (float)(menuY + 7*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
+            DrawTextEx(guiFont, "Font Selector", (Vector2){(float)(menuX + 8), (float)(menuY + 6*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
+            DrawTextEx(guiFont, "About X11", (Vector2){(float)(menuX + 8), (float)(menuY + 7*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
+            DrawTextEx(guiFont, "Exit", (Vector2){(float)(menuX + 8), (float)(menuY + 8*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
         }
 
         // Draw FWVM 3.x flat terminal window
@@ -602,11 +669,20 @@ int x11(void) {
             DrawRectangle((int)termWin.x + border, (int)termWin.y + border + titleH, 
                          (int)termWin.width - 2*border, (int)termWin.height - 2*border - titleH, fwvm_term_bg);
             
-            // Terminal text with FWVM branding and WNU OS executable info (much bigger text)
-            DrawTextEx(guiFont, "Terminal", 
-                      (Vector2){termWin.x + 16, termWin.y + titleH + 16}, 24, 0.0f, fwvm_term_fg);
-            DrawTextEx(guiFont, "Running: C:\\WNU\\WNU OS\\wnuos.exe", 
-                      (Vector2){termWin.x + 16, termWin.y + titleH + 72}, 18, 0.0f, (Color){100, 200, 100, 255});
+            // Terminal header with dynamic executable info
+            DrawTextEx(guiFont, "WNU OS Terminal", 
+                      (Vector2){termWin.x + 16, termWin.y + titleH + 16}, 22, 0.0f, fwvm_term_fg);
+            
+            // Show which executable is actually running
+            static char executableInfo[256] = "No shell process";
+            if (shell && ChildProcessAlive(shell)) {
+                snprintf(executableInfo, sizeof(executableInfo), "Running: Shell Process Active");
+            } else if (shell) {
+                snprintf(executableInfo, sizeof(executableInfo), "Shell Process Terminated");
+            }
+            DrawTextEx(guiFont, executableInfo, 
+                      (Vector2){termWin.x + 16, termWin.y + titleH + 45}, 16, 0.0f, 
+                      (shell && ChildProcessAlive(shell)) ? (Color){100, 200, 100, 255} : (Color){200, 100, 100, 255});
             
             // Read and display shell output if available (much bigger text with auto-clear)
             static char terminalBuffer[4096] = {0};
@@ -626,10 +702,23 @@ int x11(void) {
                 int bytesRead = ReadShellOutput(shell, readBuf, sizeof(readBuf) - 1);
                 if (bytesRead > 0) {
                     readBuf[bytesRead] = '\0';
-                    // Append to buffer
+                    
+                    // Filter out control characters but preserve UTF-8 sequences
+                    // UTF-8: bytes 0x80-0xFF are valid multi-byte sequence parts
+                    for (int i = 0; i < bytesRead; i++) {
+                        unsigned char ch = (unsigned char)readBuf[i];
+                        // Only filter ASCII control chars (0-31), but keep \n, \r, \t
+                        // Preserve all bytes >= 0x80 for UTF-8 support
+                        if (ch < 32 && ch != '\n' && ch != '\r' && ch != '\t') {
+                            readBuf[i] = ' '; // Replace control chars with space
+                        }
+                        // Characters >= 0x80 are left unchanged for UTF-8
+                    }
+                    
+                    // Append to buffer safely
                     if (bufferPos + bytesRead < sizeof(terminalBuffer) - 1) {
-                        strcat(terminalBuffer + bufferPos, readBuf);
-                        bufferPos += bytesRead;
+                        strncat(terminalBuffer, readBuf, sizeof(terminalBuffer) - bufferPos - 1);
+                        bufferPos = strlen(terminalBuffer); // Recalculate position after strncat
                         
                         // Count newlines to track lines
                         for (int i = 0; i < bytesRead; i++) {
@@ -652,22 +741,95 @@ int x11(void) {
                     lineCount = 1;
                 }
                 
-                // Display terminal output with much bigger text
+                // Display terminal output with proper line handling and scrolling
                 if (strlen(terminalBuffer) > 0) {
-                    DrawTextEx(guiFont, terminalBuffer, 
-                              (Vector2){termWin.x + 16, termWin.y + titleH + 98}, 20, 0.0f, fwvm_term_fg);
+                    // Split buffer into lines for proper display
+                    static char* lines[256];  // Support up to 256 lines
+                    static int totalLines = 0;
+                    
+                    // Parse lines from buffer
+                    char displayBuf[4096];
+                    strncpy(displayBuf, terminalBuffer, sizeof(displayBuf) - 1);
+                    displayBuf[sizeof(displayBuf) - 1] = '\0';
+                    
+                    totalLines = 0;
+                    char* line = strtok(displayBuf, "\n\r");
+                    while (line != NULL && totalLines < 255) {
+                        lines[totalLines] = line;
+                        totalLines++;
+                        line = strtok(NULL, "\n\r");
+                    }
+                    
+                    // Calculate how many lines can fit in the display area
+                    float lineHeight = 20.0f;
+                    int maxVisibleLines = (int)(availableHeight / lineHeight) - 1;
+                    
+                    // Show the most recent lines (scroll from bottom)
+                    int startLine = (totalLines > maxVisibleLines) ? totalLines - maxVisibleLines : 0;
+                    
+                    float yOffset = 0;
+                    for (int i = startLine; i < totalLines && i < startLine + maxVisibleLines; i++) {
+                        if (lines[i] && strlen(lines[i]) > 0) {
+                            // Handle long lines by wrapping them
+                            char* displayLine = lines[i];
+                            int maxLineLength = (int)((termWin.width - 32) / 10); // Approximate chars per line
+                            
+                            if ((int)strlen(displayLine) > maxLineLength) {
+                                // Truncate very long lines with "..."
+                                static char truncatedLine[512];
+                                strncpy(truncatedLine, displayLine, maxLineLength - 3);
+                                truncatedLine[maxLineLength - 3] = '\0';
+                                strcat(truncatedLine, "...");
+                                displayLine = truncatedLine;
+                            }
+                            
+                            DrawTextEx(guiFont, displayLine, 
+                                      (Vector2){termWin.x + 16, termWin.y + titleH + 75 + yOffset}, 
+                                      16, 0.0f, fwvm_term_fg);
+                        }
+                        yOffset += lineHeight;
+                    }
+                    
+                    // Show scroll indicator if there are more lines above
+                    if (startLine > 0) {
+                        DrawTextEx(guiFont, "... (more lines above)", 
+                                  (Vector2){termWin.x + 16, termWin.y + titleH + 75}, 
+                                  14, 0.0f, (Color){150, 150, 150, 255});
+                    }
                 }
             } else {
+                // Show connection status when shell is not alive
+                if (shell == NULL) {
+                    DrawTextEx(guiFont, "No shell process - Click Terminal icon to start", 
+                              (Vector2){termWin.x + 16, termWin.y + titleH + 98}, 18, 0.0f, (Color){255, 100, 100, 255});
+                } else {
+                    DrawTextEx(guiFont, "Shell process terminated - Restart terminal", 
+                              (Vector2){termWin.x + 16, termWin.y + titleH + 98}, 18, 0.0f, (Color){255, 100, 100, 255});
+                }
                 DrawTextEx(guiFont, "> _", 
-                          (Vector2){termWin.x + 16, termWin.y + titleH + 98}, 22, 0.0f, fwvm_term_fg);
+                          (Vector2){termWin.x + 16, termWin.y + titleH + 125}, 20, 0.0f, fwvm_term_fg);
             }
             
-            // Draw current input line
+            // Draw input area with separator line
+            float inputAreaY = termWin.y + termWin.height - 60;
+            DrawRectangle((int)termWin.x + 8, (int)inputAreaY, (int)termWin.width - 16, 1, (Color){100, 100, 100, 255});
+            
+            // Draw current input line with proper cursor
             char promptLine[512];
-            snprintf(promptLine, sizeof(promptLine), "> %s%s", inputLine, terminal_focused ? "_" : "");
-            float inputY = termWin.y + termWin.height - 50; // Near bottom of terminal
-            DrawTextEx(guiFont, promptLine, (Vector2){termWin.x + 16, inputY}, 18, 0.0f, 
+            if (terminal_focused) {
+                snprintf(promptLine, sizeof(promptLine), "> %s|", inputLine);
+            } else {
+                snprintf(promptLine, sizeof(promptLine), "> %s", inputLine);
+            }
+            
+            DrawTextEx(guiFont, promptLine, (Vector2){termWin.x + 16, inputAreaY + 8}, 16, 0.0f, 
                       terminal_focused ? fwvm_accent : fwvm_term_fg);
+                      
+            // Show input hint when focused
+            if (terminal_focused && strlen(inputLine) == 0) {
+                DrawTextEx(guiFont, "Type commands here... Press Enter to execute", 
+                          (Vector2){termWin.x + 16, inputAreaY + 32}, 12, 0.0f, (Color){120, 120, 120, 255});
+            }
             
             // Handle terminal close button
             Rectangle closeBtnRect = {(float)closeBtnX, (float)closeBtnY, (float)closeBtnSz, (float)closeBtnSz};
@@ -704,9 +866,16 @@ int x11(void) {
             
             // Handle special keys
             if (IsKeyPressed(KEY_ENTER)) {
-                if (shell && strlen(inputLine) > 0) {
-                    strcat(inputLine, "\n");
-                    WriteShellInput(shell, inputLine, strlen(inputLine));
+                if (shell) {
+                    if (strlen(inputLine) > 0) {
+                        // Send typed text with newline
+                        strcat(inputLine, "\r\n");
+                        WriteShellInput(shell, inputLine, strlen(inputLine));
+                    } else {
+                        // Send just Enter key (ASCII 13) when no text typed
+                        char enterKey[] = "\r\n";
+                        WriteShellInput(shell, enterKey, 2);
+                    }
                 }
                 memset(inputLine, 0, sizeof(inputLine));
                 inputPos = 0;
@@ -864,6 +1033,71 @@ int x11(void) {
         draw_xlogo_window(&xlogoWin, &xlogo_open, &xlogo_minimized, &xlogo_dragging, &xlogo_drag_offset,
                          &focused_window, guiFont, logo, fwvm_bg, fwvm_white, fwvm_dark_gray,
                          fwvm_accent, WIN_XLOGO, &last_clicked, screenWidth, screenHeight);
+
+        // Draw XFontsel window
+        if (xfontsel_open && !xfontsel_minimized) {
+            int border = 1;
+            int titleH = 32;
+            
+            // Window dragging
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                Vector2 mouse = GetMousePosition();
+                Rectangle titleBar = {xfontselWin.x, xfontselWin.y, xfontselWin.width, (float)titleH};
+                if (CheckCollisionPointRec(mouse, titleBar)) {
+                    xfontsel_dragging = 1;
+                    xfontsel_drag_offset.x = mouse.x - xfontselWin.x;
+                    xfontsel_drag_offset.y = mouse.y - xfontselWin.y;
+                    last_clicked = WIN_XFONTSEL;
+                }
+            }
+            
+            if (xfontsel_dragging) {
+                if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+                    Vector2 mouse = GetMousePosition();
+                    xfontselWin.x = mouse.x - xfontsel_drag_offset.x;
+                    xfontselWin.y = mouse.y - xfontsel_drag_offset.y;
+                } else {
+                    xfontsel_dragging = 0;
+                }
+            }
+            
+            // Modern flat window with shadow
+            DrawRectangle((int)xfontselWin.x + 2, (int)xfontselWin.y + 2, (int)xfontselWin.width, (int)xfontselWin.height, (Color){0, 0, 0, 60}); // Shadow
+            DrawRectangleRec(xfontselWin, fwvm_border);
+            DrawRectangle((int)xfontselWin.x + border, (int)xfontselWin.y + border, 
+                         (int)xfontselWin.width - 2*border, (int)xfontselWin.height - 2*border, fwvm_light_gray);
+            
+            // Modern flat title bar
+            DrawRectangle((int)xfontselWin.x + border, (int)xfontselWin.y + border, 
+                         (int)xfontselWin.width - 2*border, titleH, fwvm_taskbar);
+            DrawTextEx(guiFont, "Font Selector", (Vector2){xfontselWin.x + border + 12, xfontselWin.y + border + 8}, 
+                      16, 0.0f, fwvm_white);
+            
+            // Modern flat close button
+            int closeBtnSz = titleH - 8;
+            int closeBtnX = (int)(xfontselWin.x + xfontselWin.width - closeBtnSz - 8);
+            int closeBtnY = (int)(xfontselWin.y + 4 + border);
+            Rectangle closeBtnRect = {(float)closeBtnX, (float)closeBtnY, (float)closeBtnSz, (float)closeBtnSz};
+            
+            Vector2 mouse = GetMousePosition();
+            int closeHover = CheckCollisionPointRec(mouse, closeBtnRect);
+            DrawRectangleRec(closeBtnRect, closeHover ? (Color){232, 17, 35, 255} : (Color){63, 63, 70, 255});
+            
+            int crossPad = 8;
+            DrawLineEx((Vector2){closeBtnX + crossPad, closeBtnY + crossPad},
+                      (Vector2){closeBtnX + closeBtnSz - crossPad, closeBtnY + closeBtnSz - crossPad}, 2, fwvm_white);
+            DrawLineEx((Vector2){closeBtnX + closeBtnSz - crossPad, closeBtnY + crossPad},
+                      (Vector2){closeBtnX + crossPad, closeBtnY + closeBtnSz - crossPad}, 2, fwvm_white);
+            
+            if (closeHover && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                xfontsel_open = 0;
+            }
+            
+            // Draw xfontsel content
+            Rectangle contentRect = {xfontselWin.x + border, xfontselWin.y + border + titleH, 
+                                    xfontselWin.width - 2*border, xfontselWin.height - 2*border - titleH};
+            xfontsel_draw(contentRect, guiFont, fwvm_white, fwvm_black, fwvm_gray);
+        }
 
         // Draw FWVM 3.x Utilities window
         if (utilities_open && !utilities_minimized) {

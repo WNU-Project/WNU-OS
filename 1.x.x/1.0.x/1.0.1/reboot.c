@@ -155,10 +155,6 @@ int reboot_sequence() {
     printf(YELLOW "=================================\n" RESET);
     printf(CYAN "Press Ctrl+C, ESC, or I key to interrupt reboot\n\n" RESET);
     
-    // === SHUTDOWN PHASE ===
-    printf(RED "Phase 1: Shutdown Services\n" RESET);
-    printf(RED "==========================\n" RESET);
-    
     poweroff_sequence(); // Call poweroff sequence to simulate shutdown process
     system("cls");
     while (time(NULL) - start < duration) {
@@ -172,11 +168,11 @@ int reboot_sequence() {
         return -1;
     }
     
-    // === STARTUP PHASE ===
-    printf(GREEN "\nPhase 2: Starting Services\n" RESET);
-    printf(GREEN "==========================\n" RESET);
-    
-    boot_sequence(); // Call boot sequence to simulate boot process
+    if (boot_sequence() == 0) {
+        /*Don't do anything, just move on*/
+    } else {
+        return -1;
+    } // Call boot sequence to simulate boot process
     system("cls");
     return 0; // Return 0 for successful reboot completion
 }

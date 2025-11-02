@@ -366,7 +366,6 @@ int main(void) {
         if (strcmp(target, "Graphical") == 0) {
             printf("Starting graphical interface...\n");
             Sleep(1000);
-            isFullscreen = true;
             x11(); // Start X11 graphical interface
             system("cls");
             poweroff_sequence();
@@ -508,17 +507,7 @@ int main(void) {
                 
                 // Continue with shell loop (don't break)
                 continue;
-            } else if (reboot_result == 0) {
-                // Reboot completed successfully - restart shell
-                printf("\n\033[32m[REBOOT COMPLETE]\033[0m System reboot successful!\n");
-                Sleep(1500);
-                system("cls");
-                
-                // Simulate system restart by restarting shell
-                printf("\033[32m[SYSTEM]\033[0m WNU OS Restarting after reboot...\n");
-                Sleep(1000);
-                printf("\033[36mWelcome back to WNU OS!\033[0m\n\n");
-                
+            } else if (reboot_result == 0) {     
                 break;
             }
         } 
@@ -917,7 +906,6 @@ int main(void) {
         }
         else if (strcmp(command, "startx") == 0) {
             printf("Starting graphical environment...\n");
-            isFullscreen = true;
             x11();
         }
         else if (strcmp(command, "fastfetch") == 0) {
@@ -937,6 +925,27 @@ int main(void) {
             printf("but other thne that, in the beginning of 2025, is where i got hooked on Programming, starting with sratch, then Python, then C#, then C++ (GOSH THAT WAS HARD), then C! and it jsut all in ONE YEAR, YES ALL IN 2025!\n");
             printf("So Thank you users, for using WNU OS 1.0.1 Update 2, get ready For Update 3! I have Plans For it already!\n");
             printf("- @Coolis1362, The Founder Of the WNU Proejct, an the dev Of WNU OS\n");
+        }
+        else if (strcmp(command, "help") == 0) {
+            system("help");
+            printf("\n\nWNU OS COMMANDS:\n");
+            printf("  poweroff         - Shutdown the system\n");
+            printf("  poweroff now     - Immediate shutdown\n");
+            printf("  halt             - Halt the system (Ctrl+S+H to restart shell)\n");
+            printf("  reboot           - Reboot the system (Ctrl+C, ESC, or I to cancel)\n");
+            printf("  clear / cls     - Clear the screen\n");
+            printf("  cd <dir>        - Change directory\n");
+            printf("  pwd             - Print working directory\n");
+            printf("  whoami         - Display current user information\n");
+            printf("  su <user>      - Switch user (root or your Windows username)\n");
+            printf("  ls [-a] [-l]   - List directory contents\n");
+            printf("  wsys2          - Launch WSYS2 Package Manager (root only)\n");
+            printf("  switch tty <N> - Switch to TTY number N\n");
+            printf("  tty             - Display current TTY\n");
+            printf("  startx         - Start graphical environment\n");
+            printf("  fastfetch      - Display system information\n");
+            printf("  devsnote       - Message from the developer\n");
+            printf("  help           - Show this help message\n");
         }
         else if (strlen(command) > 0) {
             system(command); // Run external command

@@ -6,7 +6,7 @@ CFLAGS = -Wall -Wextra -std=c11 -Iwsys2
 TARGET = x11.exe
 
 # Source files
-SRCS = main.c x11.c xcalc.c shell_win.c xeyes.c xlogo.c
+SRCS = main.c x11.c xcalc.c shell_win.c xeyes.c xlogo.c xfontsel.c
 OBJS = $(SRCS:.c=.o)
 
 # Default build
@@ -18,7 +18,8 @@ $(TARGET): $(OBJS)
 # Compile .c to .o
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
-# Clean build artifacts (works in cmd or msys)
+
+#Clean build artifacts (works in cmd or msys)
 .PHONY: clean
 clean:
 	del .\\*.o

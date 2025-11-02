@@ -8,7 +8,7 @@ SHELL_TARGET = wnuos.exe
 # Source files
 SHELL_SRCS = main.c boot.c userlogin.c poweroff.c halt.c reboot.c \
 			 wsys2/wsys2.c wsys2/package.c tty_session.c motd.c X11/x11.c X11/shell_win.c fastfetch.c X11/xcalc.c X11/xeyes.c X11/xlogo.c \
-			 bootloader/wub.c bootloader/bios/bios.c
+			 bootloader/wub.c bootloader/bios/bios.c X11/xfontsel.c bootloader/WNU-VPC/wnu-vpc.c
 SHELL_OBJS = $(SHELL_SRCS:.c=.o)
 
 # Libraries

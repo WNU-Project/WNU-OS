@@ -12,6 +12,8 @@ int wub() {
 
     int selection = 0;
     char key;
+    int timeout = 5; // 5 second timeout
+    DWORD start_time;
 
     const char* entries[] = {
         "WNU OS 1.0.1 Update 2",
@@ -25,6 +27,8 @@ int wub() {
     } else {
         exit(1);
     }
+
+    start_time = GetTickCount();
 
     while (1) {
         system("cls");
@@ -52,23 +56,47 @@ int wub() {
         printf("      Use the ^ and v keys to select which entry is highlighted.\n");
         printf("      Press enter to boot the selected OS, `e' to edit the\n");
         printf("      commands before booting or `c' for a command-line.\n");
+        
+        // Calculate remaining timeout
+        DWORD current_time = GetTickCount();
+        int remaining = timeout - ((current_time - start_time) / 1000);
+        
+        if (remaining <= 0) {
+            // Auto-boot default entry
+            printf("\n      Automatically booting default entry in 0 seconds...\n");
+            Sleep(500);
+            system("cls");
+            printf("Auto-booting: %s...\n", entries[0]);
+            Sleep(2000);
+            return 0;
+        }
+        
+        printf("      The highlighted entry will be executed automatically in %d s.\n", remaining);
 
-        // Input
-        key = _getch();
+        // Input with timeout check
+        if (_kbhit()) {
+            key = _getch();
+        } else {
+            Sleep(100); // Small delay to prevent excessive CPU usage
+            continue; // Check timeout again
+        }
 
         if (key == 72) { // Up arrow
             selection = (selection - 1 + total) % total;
+            start_time = GetTickCount(); // Reset timeout on user input
         } else if (key == 80) { // Down arrow
             selection = (selection + 1) % total;
+            start_time = GetTickCount(); // Reset timeout on user input
         } else if (key == 13) { // Enter
-            system("cls");
-            printf("Booting: %s...\n", entries[selection]);
-            Sleep(2000);
-            return 0;
-            if (entries[selection] == "Exit") {
-                printf("Exiting WUB...\n");
+            if (selection == 3) { // Exit option
+                printf("\nExiting WUB...\n");
                 Sleep(1000);
-                exit(1);
+                return 1;
+            } else {
+                system("cls");
+                printf("Booting: %s...\n", entries[selection]);
+                Sleep(2000);
+                return 0;
             }
         } else if (key == 'c' || key == 'C') {
             printf("\nMinimal BASH-like line editing is supported...\n");
@@ -78,10 +106,13 @@ int wub() {
             printf("Unknown command '%s'\n", cmd);
             printf("Press any key to return to menu...\n");
             _getch();
+            start_time = GetTickCount(); // Reset timeout after command line
         } else if (key == 27) { // ESC
             printf("\nExiting WUB...\n");
             Sleep(1000);
             return 1;
+        } else {
+            start_time = GetTickCount(); // Reset timeout on any key press
         }
     }
 }
