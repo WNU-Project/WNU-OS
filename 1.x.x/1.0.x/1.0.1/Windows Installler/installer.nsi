@@ -112,6 +112,15 @@ Section "X11 GUI Source Code" SEC05
   File "..\X11\xterm_logo.h"
 SectionEnd
 
+Section "WNU-VPC Container Manager" SEC06
+  SetOutPath "C:\WNU\WNU-VPC"
+  File "..\..\..\..\WNU-VPC\wnu-vpc.exe"
+  SetOutPath "c:\WNU\WNU-VPC\src"
+  File "..\..\..\..\WNU-VPC\*.c"
+  File "..\..\..\..\WNU-VPC\Makefile"
+  CreateShortCut "$SMPROGRAMS\WNU OS\WNU-VPC Manager.lnk" "C:\WNU\WNU-VPC\wnu-vpc.exe"
+SectionEnd
+
 Section -AdditionalIcons
   WriteIniStr "$INSTDIR\${PRODUCT_NAME}.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
   CreateShortCut "$SMPROGRAMS\WNU OS\Website.lnk" "$INSTDIR\${PRODUCT_NAME}.url"
@@ -184,6 +193,7 @@ SectionEnd
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC03} "WSYS2 Package Manager executable"
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC04} "WSYS2 Package Manager source code"
   !insertmacro MUI_DESCRIPTION_TEXT ${SEC05} "X11 Graphical Interface source code"
+  !insertmacro MUI_DESCRIPTION_TEXT ${SEC06} "WNU-VPC Container Manager"
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 # PATH manipulation functions
