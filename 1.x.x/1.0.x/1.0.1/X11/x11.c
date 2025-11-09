@@ -28,6 +28,8 @@
 #include "xeyes.h"
 #include "xlogo.h"
 #include "xfontsel.h"
+#include "xpong.h"
+#include "games_folder.h"
 // --- Terminal buffer and shell process definitions ---
 #define TERM_MAX_LINES    512
 #define TERM_MAX_COLUMNS  256
@@ -238,6 +240,9 @@ int x11(void) {
     Image xeyesImg = LoadImageFromMemory(".png", xeyes_png, xeyes_png_len);
     Texture2D xeyeslogo = LoadTextureFromImage(xeyesImg);
     UnloadImage(xeyesImg);
+    Image games_folderImg = LoadImageFromMemory(".png", games_folder_png, games_folder_png_len);
+    Texture2D games_folder_logo = LoadTextureFromImage(games_folderImg);
+    UnloadImage(games_folderImg);
 
     Font guiFont = LoadFontEx("C:\\Windows\\Fonts\\arial.ttf", 24, 0, 95);
 
@@ -323,6 +328,20 @@ int x11(void) {
     Vector2 xfontsel_drag_offset = {0, 0};
     Rectangle xfontselWin = {400, 200, 700, 500};
     
+    // Games window state
+    int games_open = 0;
+    int games_minimized = 0;
+    int games_dragging = 0;
+    Vector2 games_drag_offset = {0, 0};
+    Rectangle gamesWin = {350, 200, 400, 300};
+    
+    // XPong window state
+    int xpong_open = 0;
+    int xpong_minimized = 0;
+    int xpong_dragging = 0;
+    Vector2 xpong_drag_offset = {0, 0};
+    Rectangle xpongWin = {300, 150, 600, 400};
+    
     // Window management
     int last_clicked = -1;
 
@@ -335,6 +354,8 @@ int x11(void) {
     const int WIN_XEYES = 5;
     const int WIN_XLOGO = 6;
     const int WIN_XFONTSEL = 7;
+    const int WIN_GAMES = 8;
+    const int WIN_XPONG = 9;
     
     // Shell process
     ChildProc* shell = NULL;
@@ -425,6 +446,12 @@ int x11(void) {
         DrawTextEx(guiFont, "ABC", (Vector2){(float)xfontsel_x, (float)(icon_y + (int)(icon_h * 0.18f) / 2)}, 32.0f, 0.0f, fwvm_white);
         DrawTextEx(guiFont, "Font Selector", (Vector2){(float)xfontsel_x, (float)(icon_y + icon_h + 4)}, 14, 0.0f, fwvm_white);
 
+        // Games folder icon (second row)
+        int games_icon_x = icon_x;
+        int games_icon_y = icon_y + icon_h + 80;
+        DrawTextureEx(games_folder_logo, (Vector2){(float)games_icon_x, (float)games_icon_y}, 0.0f, iconScale, fwvm_white);
+        DrawTextEx(guiFont, "Games", (Vector2){(float)games_icon_x, (float)(games_icon_y + icon_h + 4)}, 14, 0.0f, fwvm_white);
+
 
         // Handle right-click context menu
         if (frameCount > 60 && IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
@@ -452,8 +479,9 @@ int x11(void) {
             Rectangle xeyesRect = {menuX, menuY + 4*menuH, menuW, menuH};
             Rectangle xlogoRect = {menuX, menuY + 5*menuH, menuW, menuH};
             Rectangle xfontselRect = {menuX, menuY + 6*menuH, menuW, menuH};
-            Rectangle aboutRect = {menuX, menuY + 7*menuH, menuW, menuH};
-            Rectangle exitRect = {menuX, menuY + 8*menuH, menuW, menuH};
+            Rectangle gamesRect = {menuX, menuY + 7*menuH, menuW, menuH};
+            Rectangle aboutRect = {menuX, menuY + 8*menuH, menuW, menuH};
+            Rectangle exitRect = {menuX, menuY + 9*menuH, menuW, menuH};
             
             if (CheckCollisionPointRec(mouse, xtermRect)) {
                 if (!terminal_open) {
@@ -511,6 +539,11 @@ int x11(void) {
                 if (!xfontsel_open) {
                     xfontsel_open = 1;
                     last_clicked = WIN_XFONTSEL;
+                }
+            } else if (CheckCollisionPointRec(mouse, gamesRect)) {
+                if (!games_open) {
+                    games_open = 1;
+                    last_clicked = WIN_GAMES;
                 }
             } else if (CheckCollisionPointRec(mouse, aboutRect)) {
                 // Print to console and open about window
@@ -612,6 +645,15 @@ int x11(void) {
                     last_clicked = WIN_XFONTSEL;
                 }
             }
+
+            // Games folder icon
+            Rectangle gamesIconRect = {(float)games_icon_x, (float)games_icon_y, (float)icon_w, (float)icon_h};
+            if (CheckCollisionPointRec(mouse, gamesIconRect)) {
+                if (!games_open) {
+                    games_open = 1;
+                    last_clicked = WIN_GAMES;
+                }
+            }
         }
 
         // Draw FWVM 3.x flat context menu
@@ -622,12 +664,12 @@ int x11(void) {
             
             // Clamp menu to screen
             if (menuX + menuW > screenWidth) menuX = screenWidth - menuW - 8;
-            if (menuY + menuH * 8 > screenHeight) menuY = screenHeight - menuH * 8 - 8;
+            if (menuY + menuH * 9 > screenHeight) menuY = screenHeight - menuH * 9 - 8;
             
             // Modern flat menu styling with shadow
-            DrawRectangle(menuX + 2, menuY + 2, menuW, menuH * 8, (Color){0, 0, 0, 50});
-            DrawRectangle(menuX, menuY, menuW, menuH * 8, fwvm_light_gray);
-            DrawRectangleLines(menuX, menuY, menuW, menuH * 8, fwvm_border);
+            DrawRectangle(menuX + 2, menuY + 2, menuW, menuH * 9, (Color){0, 0, 0, 50});
+            DrawRectangle(menuX, menuY, menuW, menuH * 9, fwvm_light_gray);
+            DrawRectangleLines(menuX, menuY, menuW, menuH * 9, fwvm_border);
             
             DrawTextEx(guiFont, "Terminal", (Vector2){(float)(menuX + 8), (float)(menuY + 8)}, 16, 0.0f, fwvm_dark_gray);
             DrawTextEx(guiFont, "Calculator", (Vector2){(float)(menuX + 8), (float)(menuY + menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
@@ -636,8 +678,9 @@ int x11(void) {
             DrawTextEx(guiFont, "XEyes", (Vector2){(float)(menuX + 8), (float)(menuY + 4*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
             DrawTextEx(guiFont, "XLogo", (Vector2){(float)(menuX + 8), (float)(menuY + 5*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
             DrawTextEx(guiFont, "Font Selector", (Vector2){(float)(menuX + 8), (float)(menuY + 6*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
-            DrawTextEx(guiFont, "About X11", (Vector2){(float)(menuX + 8), (float)(menuY + 7*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
-            DrawTextEx(guiFont, "Exit", (Vector2){(float)(menuX + 8), (float)(menuY + 8*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
+            DrawTextEx(guiFont, "Games", (Vector2){(float)(menuX + 8), (float)(menuY + 7*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
+            DrawTextEx(guiFont, "About X11", (Vector2){(float)(menuX + 8), (float)(menuY + 8*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
+            DrawTextEx(guiFont, "Exit", (Vector2){(float)(menuX + 8), (float)(menuY + 9*menuH + 8)}, 16, 0.0f, fwvm_dark_gray);
         }
 
         // Draw FWVM 3.x flat terminal window
@@ -1034,6 +1077,10 @@ int x11(void) {
                          &focused_window, guiFont, logo, fwvm_bg, fwvm_white, fwvm_dark_gray,
                          fwvm_accent, WIN_XLOGO, &last_clicked, screenWidth, screenHeight);
 
+        // Draw XPong window
+        draw_xpong_window(&xpongWin, &xpong_open, &xpong_minimized, &xpong_dragging, &xpong_drag_offset,
+                         &last_clicked, WIN_XPONG, guiFont, screenWidth, screenHeight);
+
         // Draw XFontsel window
         if (xfontsel_open && !xfontsel_minimized) {
             int border = 1;
@@ -1097,6 +1144,115 @@ int x11(void) {
             Rectangle contentRect = {xfontselWin.x + border, xfontselWin.y + border + titleH, 
                                     xfontselWin.width - 2*border, xfontselWin.height - 2*border - titleH};
             xfontsel_draw(contentRect, guiFont, fwvm_white, fwvm_black, fwvm_gray);
+        }
+
+        // Draw FWVM 3.x Games window
+        if (games_open && !games_minimized) {
+            int border = 1;
+            int titleH = 32;
+            
+            // Window dragging
+            if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                Vector2 mouse = GetMousePosition();
+                Rectangle titleBar = {gamesWin.x, gamesWin.y, gamesWin.width, (float)titleH};
+                if (CheckCollisionPointRec(mouse, titleBar)) {
+                    games_dragging = 1;
+                    games_drag_offset.x = mouse.x - gamesWin.x;
+                    games_drag_offset.y = mouse.y - gamesWin.y;
+                    last_clicked = WIN_GAMES;
+                }
+            }
+            
+            if (games_dragging) {
+                if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+                    Vector2 mouse = GetMousePosition();
+                    gamesWin.x = mouse.x - games_drag_offset.x;
+                    gamesWin.y = mouse.y - games_drag_offset.y;
+                    
+                    // Keep window on screen
+                    if (gamesWin.x < 0) gamesWin.x = 0;
+                    if (gamesWin.y < 48) gamesWin.y = 48; // Below top bar
+                    if (gamesWin.x + gamesWin.width > screenWidth) gamesWin.x = screenWidth - gamesWin.width;
+                    if (gamesWin.y + gamesWin.height > screenHeight - 48) gamesWin.y = screenHeight - 48 - gamesWin.height; // Above taskbar
+                } else {
+                    games_dragging = 0;
+                }
+            }
+            
+            // Modern flat window with shadow
+            DrawRectangle((int)gamesWin.x + 2, (int)gamesWin.y + 2, (int)gamesWin.width, (int)gamesWin.height, (Color){0, 0, 0, 60}); // Shadow
+            DrawRectangleRec(gamesWin, fwvm_border);
+            DrawRectangle((int)gamesWin.x + border, (int)gamesWin.y + border, 
+                         (int)gamesWin.width - 2*border, (int)gamesWin.height - 2*border, fwvm_light_gray);
+            
+            // Modern flat title bar
+            DrawRectangle((int)gamesWin.x + border, (int)gamesWin.y + border, 
+                         (int)gamesWin.width - 2*border, titleH, fwvm_taskbar);
+            DrawTextEx(guiFont, "Games", (Vector2){gamesWin.x + border + 12, gamesWin.y + border + 8}, 
+                      16, 0.0f, fwvm_white);
+            
+            // Modern flat close button
+            int closeBtnSz = titleH - 8;
+            int closeBtnX = (int)(gamesWin.x + gamesWin.width - closeBtnSz - 8);
+            int closeBtnY = (int)(gamesWin.y + 4 + border);
+            Rectangle closeBtnRect = {(float)closeBtnX, (float)closeBtnY, (float)closeBtnSz, (float)closeBtnSz};
+            
+            Vector2 mouse = GetMousePosition();
+            int closeHover = CheckCollisionPointRec(mouse, closeBtnRect);
+            DrawRectangleRec(closeBtnRect, closeHover ? (Color){232, 17, 35, 255} : (Color){63, 63, 70, 255});
+            
+            int crossPad = 8;
+            DrawLineEx((Vector2){closeBtnX + crossPad, closeBtnY + crossPad},
+                      (Vector2){closeBtnX + closeBtnSz - crossPad, closeBtnY + closeBtnSz - crossPad}, 2, fwvm_white);
+            DrawLineEx((Vector2){closeBtnX + closeBtnSz - crossPad, closeBtnY + crossPad},
+                      (Vector2){closeBtnX + crossPad, closeBtnY + closeBtnSz - crossPad}, 2, fwvm_white);
+            
+            if (closeHover && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                games_open = 0;
+            }
+            
+            // Games window content
+            float contentY = gamesWin.y + border + titleH + 20;
+            DrawTextEx(guiFont, "WNU OS Games Collection", (Vector2){gamesWin.x + 20, contentY}, 18, 0.0f, fwvm_dark_gray);
+            
+            // XPong game button
+            int btnW = 300, btnH = 40;
+            int btnX = (int)gamesWin.x + 50;
+            int btnY = (int)contentY + 40;
+            
+            Rectangle xpongBtn = {(float)btnX, (float)btnY, (float)btnW, (float)btnH};
+            int xpongHover = CheckCollisionPointRec(mouse, xpongBtn);
+            DrawRectangleRec(xpongBtn, xpongHover ? fwvm_hover : fwvm_accent);
+            DrawRectangleLinesEx(xpongBtn, 1, fwvm_border);
+            
+            // Game icon (paddle representation)
+            DrawRectangle(btnX + 10, btnY + 10, 5, 20, fwvm_white);
+            DrawRectangle(btnX + btnW - 25, btnY + 10, 5, 20, fwvm_white);
+            DrawCircle(btnX + btnW/2, btnY + btnH/2, 4, fwvm_white);
+            
+            DrawTextEx(guiFont, "XPong - Classic Pong Game", (Vector2){(float)(btnX + 40), (float)(btnY + 10)}, 16, 0.0f, fwvm_white);
+            DrawTextEx(guiFont, "Two-player paddle game", (Vector2){(float)(btnX + 40), (float)(btnY + 26)}, 12, 0.0f, (Color){220, 220, 220, 255});
+            
+            // Handle XPong launch
+            if (xpongHover && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+                // Close games window and launch XPong window
+                games_open = 0;
+                xpong_open = 1;
+                last_clicked = WIN_XPONG;
+                printf("Launching XPong game window...\n");
+                fflush(stdout);
+            }
+            
+            // Coming soon games
+            btnY += 60;
+            DrawTextEx(guiFont, "Coming Soon:", (Vector2){(float)(btnX), (float)btnY}, 16, 0.0f, fwvm_dark_gray);
+            
+            btnY += 25;
+            DrawTextEx(guiFont, "• XTetris - Block puzzle game", (Vector2){(float)(btnX + 10), (float)btnY}, 14, 0.0f, fwvm_gray);
+            btnY += 20;
+            DrawTextEx(guiFont, "• XSnake - Classic snake game", (Vector2){(float)(btnX + 10), (float)btnY}, 14, 0.0f, fwvm_gray);
+            btnY += 20;
+            DrawTextEx(guiFont, "• XMaze - 3D maze explorer", (Vector2){(float)(btnX + 10), (float)btnY}, 14, 0.0f, fwvm_gray);
         }
 
         // Draw FWVM 3.x Utilities window
@@ -1268,6 +1424,8 @@ int x11(void) {
             utilities_dragging = 0;
             about_dragging = 0;
             xlogo_dragging = 0;
+            games_dragging = 0;
+            xpong_dragging = 0;
         }
 
         // Draw FWVM 3.x modern taskbar

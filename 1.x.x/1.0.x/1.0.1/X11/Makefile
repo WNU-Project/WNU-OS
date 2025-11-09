@@ -6,7 +6,7 @@ CFLAGS = -Wall -Wextra -std=c11 -Iwsys2
 TARGET = x11.exe
 
 # Source files
-SRCS = main.c x11.c xcalc.c shell_win.c xeyes.c xlogo.c xfontsel.c
+SRCS = main.c x11.c xcalc.c shell_win.c xeyes.c xlogo.c xfontsel.c xpong.c
 OBJS = $(SRCS:.c=.o)
 
 # Default build

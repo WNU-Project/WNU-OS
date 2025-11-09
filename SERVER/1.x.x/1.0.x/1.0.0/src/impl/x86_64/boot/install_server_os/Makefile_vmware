@@ -1,0 +1,25 @@
+# VMware-Safe WNU OS Server Installer Makefile
+# Compiles C code without problematic inline assembly
+
+CC = gcc
+CFLAGS = -m32 -ffreestanding -nostdlib -nostdinc -fno-builtin -fno-stack-protector -fno-pic -fno-pie
+LDFLAGS = -m32 -nostdlib -Ttext=0x7c00 --oformat binary
+
+installer.bin: main.o header.o
+	ld $(LDFLAGS) -o installer.bin header.o main.o
+
+main.o: main.c
+	$(CC) $(CFLAGS) -c main.c -o main.o
+
+header.o: header.asm
+	nasm -f elf32 header.asm -o header.o
+
+clean:
+	del /f *.o *.bin 2>nul
+
+test-vmware: installer.bin
+	@echo Testing installer in VMware...
+	@echo Copy installer.bin to VMware and boot from it
+	@echo This version should NOT cause CPU faults
+
+.PHONY: clean test-vmware
