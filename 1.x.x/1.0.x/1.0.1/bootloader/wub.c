@@ -16,9 +16,9 @@ int wub() {
     DWORD start_time;
 
     const char* entries[] = {
-        "WNU OS 1.0.1 Update 2",
-        "Advanced options for WNU OS 1.0.1 Update 2",
-        "WNU OS 1.0.1 Update 2 (recovery mode)",
+        "WNU OS 1.0.2",
+        "Advanced options for WNU OS 1.0.2",
+        "WNU OS 1.0.2 (recovery mode)",
         "Exit"
     };
     int total = sizeof(entries) / sizeof(entries[0]);

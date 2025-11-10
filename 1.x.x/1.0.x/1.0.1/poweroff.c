@@ -69,10 +69,10 @@ int poweroff_sequence(void) {
     // Final newline after 100% completion
 
     printf("\n");
-    printf("[\033[2m%.6f\033[0m] WNU OS 1.0.1 shutdown initiated... [\t\033[33mPENDING\033[0m\t]\n", t);
+    printf("[\033[2m%.6f\033[0m] WNU OS 1.0.2 shutdown initiated... [\t\033[33mPENDING\033[0m\t]\n", t);
     fflush(stdout);
     Sleep(200 + (rand() % 50));
-    printf("[\033[2m%.6f\033[0m] WNU OS 1.0.1 shutdown initiated... [\t\033[32mOK\033[0m\t]\n", t + 0.2);
+    printf("[\033[2m%.6f\033[0m] WNU OS 1.0.2 shutdown initiated... [\t\033[32mOK\033[0m\t]\n", t + 0.2);
 
     printf("[\033[2m%.6f\033[0m] Stopping user sessions... [\t\033[33mPENDING\033[0m\t]\n", get_poweroff_unix_epoch_seconds());
     Sleep(150 + (rand() % 50));
@@ -121,7 +121,7 @@ int poweroff_sequence(void) {
 
     printf("\n");
     printf("Unix Epoch Time for shutdown sequence: %.6f seconds\n", get_poweroff_unix_epoch_seconds() - t);
-    printf("WNU OS 1.0.1 shutdown completed successfully.\n");
+    printf("WNU OS 1.0.2 shutdown completed successfully.\n");
     printf("System halted. Thank you for using WNU OS!\n");
     printf("\n");
 

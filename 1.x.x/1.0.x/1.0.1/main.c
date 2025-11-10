@@ -280,7 +280,7 @@ int main(void) {
 
         // --- Getty target login screen ---
         printf("\n");
-        printf("WNU OS 1.0.1 Update 2 %s %s %s %s US EDT UTC -4:00\n", computername, current_tty, __DATE__, __TIME__);
+        printf("WNU OS 1.0.2 %s %s %s %s US EDT UTC -4:00\n", computername, current_tty, __DATE__, __TIME__);
         printf("\n");
         printf("%s login: ", computername);
         fflush(stdout);
@@ -615,7 +615,7 @@ int main(void) {
             break;
          }
 
-         printf("WNU OS %s 1.0.1 WNU-Kernel-1.0.1 #1 SMP FULL_RELEASE WNU/2025 %s WNU\n", computername, arch);
+         printf("WNU OS %s 1.0.2 WNU-Kernel-1.0.2 #1 SMP FULL_RELEASE WNU/2025 %s WNU\n", computername, arch);
         }
         else if (strncmp(command, "ls", 2) == 0) {
             // Custom ls implementation
@@ -680,7 +680,7 @@ int main(void) {
             
             printf("\033[36m----------------------------------------\033[0m\n");
             printf("\033[36m-         WSYS2 Package Manager        -\033[0m\n");
-            printf("\033[36m-            WNU OS 1.0.1              -\033[0m\n");
+            printf("\033[36m-            WNU OS 1.0.2              -\033[0m\n");
             printf("\033[36m----------------------------------------\033[0m\n");
             printf("Type 'help' for available commands, 'exit' to return to WNU OS shell\n\n");
             

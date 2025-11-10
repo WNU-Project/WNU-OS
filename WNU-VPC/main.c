@@ -123,7 +123,8 @@ int main(int argc, char *argv[]) {
         printf("  wnu-vpc uninstall <name>:<tag>        # Uninstall\n");
         printf("\n");
         printf("Available tags:\n");
-        printf("  latest          - Current development version\n");
+        printf("  dev             - Current Demo/Dev Build\n");
+        printf("  latest          - Current version\n");
         printf("  1.0.1.update.2  - Latest stable with X11 and Unicode\n");
         printf("  1.0.1.update.1  - Package management update\n");
         printf("  1.0.1           - Major package management release\n");
@@ -306,8 +307,11 @@ int main(int argc, char *argv[]) {
 
         // Determine download URL based on tag
         const char* download_url;
-        if (strcmp(tag, "latest") == 0) {
+        if (strcmp(tag, "dev") == 0) {
             download_url = "https://github.com/WNU-Project/WNU-OS/raw/refs/heads/master/1.x.x/1.0.x/1.0.1/wnuos.exe";
+        }
+        else if (strcmp(tag, "latest") == 0) {
+            download_url = "https://github.com/WNU-Project/WNU-OS/raw/refs/tags/v1.0.1.update.2/1.x.x/1.0.x/1.0.1/wnuos.exe";
         }
         else if (strcmp(tag, "1.0.1.update.2") == 0) {
             download_url = "https://github.com/WNU-Project/WNU-OS/raw/refs/tags/v1.0.1.update.2/1.x.x/1.0.x/1.0.1/wnuos.exe";
@@ -323,7 +327,7 @@ int main(int argc, char *argv[]) {
         }
         else {
             printf("Error: Unknown tag '%s'\n", tag);
-            printf("Available tags: latest, 1.0.1.update.2, 1.0.1.update.1, 1.0.1, 1.0.0\n");
+            printf("Available tags: dev, latest, 1.0.1.update.2, 1.0.1.update.1, 1.0.1, 1.0.0\n");
             return 1;
         }
         
