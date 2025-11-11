@@ -1,0 +1,124 @@
+// VGA Memory Cheatsheet - Use this to find character codes and their memory addresses in VGA text mode
+// Copy And Paste this to your code
+
+'A'	0x41	0x0741	White 'A'
+'B'	0x42	0x0742	White 'B'
+'C'	0x43	0x0743	White 'C'
+'D'	0x44	0x0744	White 'D'
+'E'	0x45	0x0745	White 'E'
+'F'	0x46	0x0746	White 'F'
+'G'	0x47	0x0747	White 'G'
+'H'	0x48	0x0748	White 'H'
+'I'	0x49	0x0749	White 'I'
+'J'	0x4A	0x074A	White 'J'
+'K'	0x4B	0x074B	White 'K'
+'L'	0x4C	0x074C	White 'L'
+'M'	0x4D	0x074D	White 'M'
+'N'	0x4E	0x074E	White 'N'
+'O'	0x4F	0x074F	White 'O'
+'P'	0x50	0x0750	White 'P'
+'Q'	0x51	0x0751	White 'Q'
+'R'	0x52	0x0752	White 'R'
+'S'	0x53	0x0753	White 'S'
+'T'	0x54	0x0754	White 'T'
+'U'	0x55	0x0755	White 'U'
+'V'	0x56	0x0756	White 'V'
+'W'	0x57	0x0757	White 'W'
+'X'	0x58	0x0758	White 'X'
+'Y'	0x59	0x0759	White 'Y'
+'Z'	0x5A	0x075A	White 'Z'
+// [47] 'a' = ASCII 0x61 → VGA word 0x0761  ; White 'a'
+// [48] 'b' = ASCII 0x62 → VGA word 0x0762  ; White 'b'
+// [49] 'c' = ASCII 0x63 → VGA word 0x0763  ; White 'c'
+// [50] 'd' = ASCII 0x64 → VGA word 0x0764  ; White 'd'
+// [51] 'e' = ASCII 0x65 → VGA word 0x0765  ; White 'e'
+// [52] 'f' = ASCII 0x66 → VGA word 0x0766  ; White 'f'
+// [53] 'g' = ASCII 0x67 → VGA word 0x0767  ; White 'g'
+// [54] 'h' = ASCII 0x68 → VGA word 0x0768  ; White 'h'
+// [55] 'i' = ASCII 0x69 → VGA word 0x0769  ; White 'i'
+// [56] 'j' = ASCII 0x6A → VGA word 0x076A  ; White 'j'
+// [57] 'k' = ASCII 0x6B → VGA word 0x076B  ; White 'k'
+// [58] 'l' = ASCII 0x6C → VGA word 0x076C  ; White 'l'
+// [59] 'm' = ASCII 0x6D → VGA word 0x076D  ; White 'm'
+// [60] 'n' = ASCII 0x6E → VGA word 0x076E  ; White 'n'
+// [61] 'o' = ASCII 0x6F → VGA word 0x076F  ; White 'o'
+// [62] 'p' = ASCII 0x70 → VGA word 0x0770  ; White 'p'
+// [63] 'q' = ASCII 0x71 → VGA word 0x0771  ; White 'q'
+// [64] 'r' = ASCII 0x72 → VGA word 0x0772  ; White 'r'
+// [65] 's' = ASCII 0x73 → VGA word 0x0773  ; White 's'
+// [66] 't' = ASCII 0x74 → VGA word 0x0774  ; White 't'
+// [67] 'u' = ASCII 0x75 → VGA word 0x0775  ; White 'u'
+// [68] 'v' = ASCII 0x76 → VGA word 0x0776  ; White 'v'
+// [69] 'w' = ASCII 0x77 → VGA word 0x0777  ; White 'w'
+// [70] 'x' = ASCII 0x78 → VGA word 0x0778  ; White 'x'
+// [71] 'y' = ASCII 0x79 → VGA word 0x0779  ; White 'y'
+// [72] 'z' = ASCII 0x7A → VGA word 0x077A  ; White 'z'
+
+// Digits
+// [32] '0' = ASCII 0x30 → VGA word 0x0730  ; White '0'
+// [33] '1' = ASCII 0x31 → VGA word 0x0731  ; White '1'
+// [34] '2' = ASCII 0x32 → VGA word 0x0732  ; White '2'
+// [35] '3' = ASCII 0x33 → VGA word 0x0733  ; White '3'
+// [36] '4' = ASCII 0x34 → VGA word 0x0734  ; White '4'
+// [37] '5' = ASCII 0x35 → VGA word 0x0735  ; White '5'
+// [38] '6' = ASCII 0x36 → VGA word 0x0736  ; White '6'
+// [39] '7' = ASCII 0x37 → VGA word 0x0737  ; White '7'
+// [40] '8' = ASCII 0x38 → VGA word 0x0738  ; White '8'
+// [41] '9' = ASCII 0x39 → VGA word 0x0739  ; White '9'
+
+/ Non-Letter Characters /
+| ' ' | 0x20 | 0x0720 | White space |
+| '@' | 0x40 | 0x0740 | White '@' |
+| ':' | 0x3A | 0x073A | White ':' | 
+| '~' | 0x7E | 0x077E | White '~' | 
+| '#' | 0x23 | 0x0723 | White '#' |
+| '.' | 0x2E | 0x072E | White period |
+| ',' | 0x2C | 0x072C | White comma |
+| '_' | 0x5F | 0x075F | White underscore |
+
+// Colors
+Code	Color Name	Example VGA Word ('A')
+0x0	Black	0x0041 = black 'A'
+0x1	Blue	0x0141 = blue 'A'
+0x2	Green	0x0241 = green 'A'
+0x3	Cyan	0x0341 = cyan 'A'
+0x4	Red	0x0441 = red 'A'
+0x5	Magenta	0x0541 = magenta 'A'
+0x6	Brown	0x0641 = brown 'A'
+0x7	Light Gray	0x0741 = light gray 'A'
+0x8	Dark Gray	0x0841 = dark gray 'A'
+0x9	Light Blue	0x0941 = light blue 'A'
+0xA	Light Green	0x0A41 = light green 'A'
+0xB	Light Cyan	0x0B41 = light cyan 'A'
+0xC	Light Red	0x0C41 = light red 'A'
+0xD	Light Magenta	0x0D41 = light magenta 'A'
+0xE	Yellow	0x0E41 = yellow 'A'
+0xF	White	0x0F41 = white 'A'
+// Lines
+
+Line #	Start Address	Offset from 0xB8000
+0	0xB8000	+0
+1	0xB80A0	+160
+2	0xB8140	+320
+3	0xB81E0	+480
+4	0xB8280	+640
+5	0xB8320	+800
+6	0xB83C0	+960
+7	0xB8460	+1120
+8	0xB8500	+1280
+9	0xB85A0	+1440
+10	0xB8640	+1600
+11	0xB86E0	+1760
+12	0xB8780	+1920
+13	0xB8820	+2080
+14	0xB88C0	+2240
+15	0xB8960	+2400
+16	0xB8A00	+2560
+17	0xB8AA0	+2720
+18	0xB8B40	+2880
+19	0xB8BE0	+3040
+20	0xB8C80	+3200
+21	0xB8D20	+3360
+22	0xB8DC0	+3520
+23	0xB8E60	+3680
+24	0xB8F00	+3840

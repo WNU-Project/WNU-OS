@@ -17,12 +17,12 @@ typedef struct {
 } Ball;
 
 // XPong window implementation - runs as a window within the desktop
-void draw_xpong_window(Rectangle *xpongWin, int *xpong_open, int *xpong_minimized, 
+int draw_xpong_window(Rectangle *xpongWin, int *xpong_open, int *xpong_minimized, 
                       int *xpong_dragging, Vector2 *xpong_drag_offset,
                       int *last_clicked, int WIN_XPONG, Font guiFont, 
                       int screenWidth, int screenHeight) {
     
-    if (!xpong_open || !*xpong_open || *xpong_minimized) return;
+    if (!xpong_open || !*xpong_open || *xpong_minimized) return 0;
 
     // Persistent game state (static variables to maintain state between calls)
     static Paddle leftPaddle = { {50, 250}, {15, 80}, 250 };
@@ -32,6 +32,8 @@ void draw_xpong_window(Rectangle *xpongWin, int *xpong_open, int *xpong_minimize
     static int rightScore = 0;
     static bool gameStarted = false;
     static bool gameInitialized = false;
+    static bool gameWon = false;
+    static float winTimer = 0.0f;
 
     Vector2 mouse = GetMousePosition();
     int border = 2;
@@ -52,6 +54,8 @@ void draw_xpong_window(Rectangle *xpongWin, int *xpong_open, int *xpong_minimize
         rightScore = 0;
         gameStarted = false;
         gameInitialized = true;
+        gameWon = false;
+        winTimer = 0.0f;
     }
 
     // Ensure minimum window size
@@ -92,7 +96,7 @@ void draw_xpong_window(Rectangle *xpongWin, int *xpong_open, int *xpong_minimize
         *xpong_open = 0;
         gameInitialized = false; // Reset for next time
         if (*last_clicked == WIN_XPONG) *last_clicked = -1;
-        return;
+        return 0;
     }
 
     // Game area (below title bar)
@@ -108,7 +112,23 @@ void draw_xpong_window(Rectangle *xpongWin, int *xpong_open, int *xpong_minimize
     // Game logic update
     float deltaTime = GetFrameTime();
     
-    if (gameHasFocus) {
+    // Check for win condition and handle win timer
+    if (!gameWon && (leftScore >= 5 || rightScore >= 5)) {
+        gameWon = true;
+        winTimer = 0.0f;
+    }
+    
+    if (gameWon) {
+        winTimer += deltaTime;
+        if (winTimer >= 3.0f) { // Show win message for 3 seconds, then close
+            *xpong_open = 0;
+            gameInitialized = false; // Reset for next time
+            if (*last_clicked == WIN_XPONG) *last_clicked = -1;
+            return 0;
+        }
+    }
+    
+    if (gameHasFocus && !gameWon) {
         if (!gameStarted) {
             // Start game when space is pressed (only if game window has focus)
             if (IsKeyPressed(KEY_SPACE)) {
@@ -185,6 +205,8 @@ void draw_xpong_window(Rectangle *xpongWin, int *xpong_open, int *xpong_minimize
             leftScore = 0;
             rightScore = 0;
             gameStarted = false;
+            gameWon = false;
+            winTimer = 0.0f;
             ball.position.x = gameAreaW / 2;
             ball.position.y = gameAreaH / 2;
         }
@@ -244,17 +266,27 @@ void draw_xpong_window(Rectangle *xpongWin, int *xpong_open, int *xpong_minimize
                   12, 0.0f, (Color){120, 120, 120, 255});
     }
     
-    // Draw winning message
-    if (leftScore >= 5) {
-        Vector2 winSize = MeasureTextEx(guiFont, "PLAYER 1 WINS!", 20, 0.0f);
-        DrawTextEx(guiFont, "PLAYER 1 WINS!", 
-                  (Vector2){gameAreaX + (gameAreaW - winSize.x)/2, gameAreaY + gameAreaH/2 + 40}, 
-                  20, 0.0f, (Color){0, 255, 0, 255});
-    } else if (rightScore >= 5) {
-        Vector2 winSize = MeasureTextEx(guiFont, "PLAYER 2 WINS!", 20, 0.0f);
-        DrawTextEx(guiFont, "PLAYER 2 WINS!", 
-                  (Vector2){gameAreaX + (gameAreaW - winSize.x)/2, gameAreaY + gameAreaH/2 + 40}, 
-                  20, 0.0f, (Color){0, 255, 0, 255});
+    // Draw winning message (only when game is won)
+    if (gameWon) {
+        if (leftScore >= 5) {
+            Vector2 winSize = MeasureTextEx(guiFont, "PLAYER 1 WINS!", 20, 0.0f);
+            DrawTextEx(guiFont, "PLAYER 1 WINS!", 
+                      (Vector2){gameAreaX + (gameAreaW - winSize.x)/2, gameAreaY + gameAreaH/2 + 40}, 
+                      20, 0.0f, (Color){0, 255, 0, 255});
+        } else if (rightScore >= 5) {
+            Vector2 winSize = MeasureTextEx(guiFont, "PLAYER 2 WINS!", 20, 0.0f);
+            DrawTextEx(guiFont, "PLAYER 2 WINS!", 
+                      (Vector2){gameAreaX + (gameAreaW - winSize.x)/2, gameAreaY + gameAreaH/2 + 40}, 
+                      20, 0.0f, (Color){0, 255, 0, 255});
+        }
+        
+        // Show countdown
+        char closeMsg[64];
+        sprintf(closeMsg, "Closing in %.1f seconds...", 3.0f - winTimer);
+        Vector2 closeMsgSize = MeasureTextEx(guiFont, closeMsg, 12, 0.0f);
+        DrawTextEx(guiFont, closeMsg, 
+                  (Vector2){gameAreaX + (gameAreaW - closeMsgSize.x)/2, gameAreaY + gameAreaH/2 + 70}, 
+                  12, 0.0f, (Color){200, 200, 200, 255});
     }
 
     // Handle window dragging

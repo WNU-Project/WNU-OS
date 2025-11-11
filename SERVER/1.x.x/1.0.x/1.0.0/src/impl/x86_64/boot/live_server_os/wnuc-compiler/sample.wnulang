@@ -1,0 +1,32 @@
+// Sample WNU-LANG Program
+// This demonstrates the syntax of WNU-LANG programming language
+
+print "Welcome to WNU OS!"
+print "Initializing WNU-LANG Runtime..."
+
+set server_port = 8080
+set max_connections = 100
+set server_name = "WNU-Server"
+
+print "Starting server on port:"
+print server_port
+
+if server_port > 8000 then
+    print "Using secure port range"
+    set security_level = "high"
+end
+
+if max_connections > 50 then
+    print "High capacity server mode"
+    set memory_pool = 2048
+end
+
+print "Server configuration complete!"
+print "WNU-LANG compilation successful!"
+
+// Loop example
+loop 3 times
+    print "Loading module..."
+end
+
+print "All modules loaded. Server ready!"

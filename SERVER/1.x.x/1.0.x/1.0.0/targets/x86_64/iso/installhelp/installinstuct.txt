@@ -1,4 +1,4 @@
-            WNU OS SERVER 1.0.0 Installation Instructions (PLEASE UNDERSTNAD THIS IS A PRE-ALPHA VERSION)
+            WNU OS SERVER 1.0.0 Installation Instructions (PLEASE UNDERSTNAD THIS IS A PRE-ALPHA VERSION) (OUTDATED WNU OS SERVER IS NOW A LIVE OS ONLY)
                     ============================================================================
                 1a. When you Boot From The ISO or Installation Media, you will see a GRUB Menu.
                     1b. Select "WNU OS Server 1.0.0 (INSTALL) (WIP)" to start the installation process.
