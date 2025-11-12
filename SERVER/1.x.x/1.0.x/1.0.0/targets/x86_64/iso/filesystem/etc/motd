@@ -1,0 +1,21 @@
+# WNU OS SERVER 1.0.0.11.11.2025.PRE.ALPHA
+# Message of the Day (MOTD)
+# 
+# Welcome to WNU OS SERVER!
+# 
+# This is a PRE-ALPHA release - expect bugs and missing features.
+# 
+# Available commands:
+#   ls      - List directory contents
+#   pwd     - Show current directory
+#   cd      - Change directory 
+#   uname   - Show system information
+#   clear   - Clear screen
+#   wnuc    - WNU-LANG compiler
+#
+# For help and bug reports, visit:
+# https://github.com/WNU-Project/WNU-OS
+#
+# Kernel Version: 00.1
+# Build Date: 11.11.2025
+# Architecture: x86_64

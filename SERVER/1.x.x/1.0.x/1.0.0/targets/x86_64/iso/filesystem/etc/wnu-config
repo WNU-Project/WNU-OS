@@ -1,0 +1,28 @@
+# WNU OS SERVER Configuration
+# System Default Settings
+
+# Terminal Settings
+TERM=vga-color
+COLUMNS=80
+LINES=25
+
+# System Paths
+PATH=/bin:/usr/bin:/usr/local/bin
+HOME=/root
+
+# Compiler Settings
+WNUC_PATH=/usr/bin/wnuc
+WNU_LANG_VERSION=1.0
+
+# System Information
+ARCH=x86_64
+KERNEL=00.1
+BUILD_DATE=20251111
+
+# Boot Settings
+DEFAULT_SHELL=wnu_shell
+HOSTNAME=live
+
+# Debug Settings (PRE-ALPHA)
+DEBUG_MODE=enabled
+VERBOSE_BOOT=enabled

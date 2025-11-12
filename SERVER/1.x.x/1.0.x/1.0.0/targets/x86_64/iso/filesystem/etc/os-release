@@ -1,0 +1,8 @@
+NAME="WNU OS SERVER"
+VERSION="1.0.0.11.11.2025.PRE.ALPHA"
+ID=wnu-os-server
+VERSION_ID="1.0.0"
+PRETTY_NAME="WNU OS SERVER 1.0.0.11.11.2025.PRE.ALPHA"
+HOME_URL="https://github.com/WNU-Project/WNU-OS"
+SUPPORT_URL="https://github.com/WNU-Project/WNU-OS/issues"
+BUG_REPORT_URL="https://github.com/WNU-Project/WNU-OS/issues"
