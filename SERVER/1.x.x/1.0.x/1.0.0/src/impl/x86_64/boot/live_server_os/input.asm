@@ -25,6 +25,16 @@ handle_keypress:
     ; AL contains the scancode
     ; RDI contains cursor position
     
+    ; Check for shift key press/release first
+    cmp al, 0x2A                ; Left shift pressed
+    je shift_pressed
+    cmp al, 0xAA                ; Left shift released
+    je shift_released
+    cmp al, 0x36                ; Right shift pressed
+    je shift_pressed
+    cmp al, 0xB6                ; Right shift released
+    je shift_released
+    
     cmp al, 0x1C                ; Enter key?
     je handle_enter
     
@@ -128,6 +138,18 @@ handle_keypress:
     ; Unknown key - ignore
     ret
 
+; Shift key handlers
+shift_pressed:
+    mov byte [shift_state], 1   ; Set shift flag
+    ret
+    
+shift_released:
+    mov byte [shift_state], 0   ; Clear shift flag
+    ret
+
+section .data
+shift_state db 0               ; 0 = no shift, 1 = shift pressed
+
 ; Numbers
 type_1:
     mov word [rdi], 0x0731
@@ -172,23 +194,56 @@ type_0:
 
 ; Top row
 type_q:
-    mov word [rdi], 0x0771
+    cmp byte [shift_state], 1
+    je type_q_upper
+    mov word [rdi], 0x0771      ; 'q' lowercase
     add rdi, 2
     ret
+type_q_upper:
+    mov word [rdi], 0x0751      ; 'Q' uppercase
+    add rdi, 2
+    ret
+
 type_w:
-    mov word [rdi], 0x0777
+    cmp byte [shift_state], 1
+    je type_w_upper
+    mov word [rdi], 0x0777      ; 'w' lowercase
     add rdi, 2
     ret
+type_w_upper:
+    mov word [rdi], 0x0757      ; 'W' uppercase
+    add rdi, 2
+    ret
+
 type_e:
-    mov word [rdi], 0x0765
+    cmp byte [shift_state], 1
+    je type_e_upper
+    mov word [rdi], 0x0765      ; 'e' lowercase
     add rdi, 2
     ret
+type_e_upper:
+    mov word [rdi], 0x0745      ; 'E' uppercase
+    add rdi, 2
+    ret
+
 type_r:
-    mov word [rdi], 0x0772
+    cmp byte [shift_state], 1
+    je type_r_upper
+    mov word [rdi], 0x0772      ; 'r' lowercase
+    add rdi, 2
+    ret
+type_r_upper:
+    mov word [rdi], 0x0752      ; 'R' uppercase
     add rdi, 2
     ret
 type_t:
-    mov word [rdi], 0x0774
+    cmp byte [shift_state], 1
+    je type_t_upper
+    mov word [rdi], 0x0774      ; 't' lowercase
+    add rdi, 2
+    ret
+type_t_upper:
+    mov word [rdi], 0x0754      ; 'T' uppercase
     add rdi, 2
     ret
 type_y:
@@ -214,15 +269,46 @@ type_p:
 
 ; Middle row
 type_a:
-    mov word [rdi], 0x0761
+    cmp byte [shift_state], 1
+    je type_a_upper
+    mov word [rdi], 0x0761      ; 'a' lowercase
     add rdi, 2
     ret
+type_a_upper:
+    mov word [rdi], 0x0741      ; 'A' uppercase
+    add rdi, 2
+    ret
+
 type_s:
-    mov word [rdi], 0x0773
+    cmp byte [shift_state], 1
+    je type_s_upper
+    mov word [rdi], 0x0773      ; 's' lowercase
     add rdi, 2
     ret
+type_s_upper:
+    mov word [rdi], 0x0753      ; 'S' uppercase
+    add rdi, 2
+    ret
+
 type_d:
-    mov word [rdi], 0x0764
+    cmp byte [shift_state], 1
+    je type_d_upper
+    mov word [rdi], 0x0764      ; 'd' lowercase
+    add rdi, 2
+    ret
+type_d_upper:
+    mov word [rdi], 0x0744      ; 'D' uppercase
+    add rdi, 2
+    ret
+
+type_m:
+    cmp byte [shift_state], 1
+    je type_m_upper
+    mov word [rdi], 0x076D      ; 'm' lowercase
+    add rdi, 2
+    ret
+type_m_upper:
+    mov word [rdi], 0x074D      ; 'M' uppercase
     add rdi, 2
     ret
 type_f:
@@ -260,7 +346,13 @@ type_x:
     add rdi, 2
     ret
 type_c:
-    mov word [rdi], 0x0763
+    cmp byte [shift_state], 1
+    je type_c_upper
+    mov word [rdi], 0x0763      ; 'c' lowercase
+    add rdi, 2
+    ret
+type_c_upper:
+    mov word [rdi], 0x0743      ; 'C' uppercase
     add rdi, 2
     ret
 type_v:
@@ -275,11 +367,6 @@ type_n:
     mov word [rdi], 0x076E
     add rdi, 2
     ret
-type_m:
-    mov word [rdi], 0x076D
-    add rdi, 2
-    ret
-
 ; Special characters
 type_space:
     mov word [rdi], 0x0720      ; ' ' space

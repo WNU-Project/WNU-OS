@@ -1,20 +1,28 @@
 section .multiboot_header
-align 4
-multiboot_header:
-    dd 0x1BADB002                ; Multiboot1 magic number
-    dd 0x00000000                ; Flags
-    dd -(0x1BADB002 + 0x00000000); Checksum
+header_start:
+    dd 0xe85250d6  ; Magic number for multiboot
+    dd 0           ; Flags
+    dd header_end - header_start  ; Header size
+    dd 0x100000000 - (0xe85250d6 + 0 + (header_end - header_start))  ; Checksum
+    dw 0
+    dw 0
+    dd 8
+header_end:
 
 section .text
+bits 64
 global _start
 extern main
+extern init_systemd
 
 _start:
-    ; Set up minimal 64-bit environment
+    ; Set up minimal environment
     cli                          ; Disable interrupts
     
-    ; Set up stack
-    mov rsp, stack_top
+    ; Set up stack pointer
+    mov esp, stack_top
+    
+    ; Display early boot message
     mov word [0xB8000], 0x0753 ; S
     mov word [0xB8002], 0x0754 ; T
     mov word [0xB8004], 0x0741 ; A
@@ -23,8 +31,19 @@ _start:
     mov word [0xB800A], 0x0749 ; I
     mov word [0xB800C], 0x074E ; N
     mov word [0xB800E], 0x0747 ; G
+    mov word [0xB8010], 0x0720 ; Space
+    mov word [0xB8012], 0x0753 ; S
+    mov word [0xB8014], 0x0759 ; Y
+    mov word [0xB8016], 0x0753 ; S
+    mov word [0xB8018], 0x0754 ; T
+    mov word [0xB801A], 0x0745 ; E
+    mov word [0xB801C], 0x074D ; M
+    mov word [0xB801E], 0x0744 ; D
     
-    ; Call our assembly main function
+    ; Initialize SystemD (PID 1)
+    call init_systemd
+    
+    ; Call main kernel function
     call main
     
     ; Halt if we return

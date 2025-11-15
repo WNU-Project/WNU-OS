@@ -75,6 +75,7 @@
 | '.' | 0x2E | 0x072E | White period |
 | ',' | 0x2C | 0x072C | White comma |
 | '_' | 0x5F | 0x075F | White underscore |
+| '-'   |	0x2D | 0x072D |	White hyphen |
 
 // Colors
 Code	Color Name	Example VGA Word ('A')
