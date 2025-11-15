@@ -18,6 +18,7 @@ extern init_gui
 extern draw_desktop
 extern draw_menu
 extern wnu_toolchain_main
+extern load_linux_app
 
 ; Process the typed command - RSI points to command buffer start
 process_command:
@@ -2510,35 +2511,20 @@ linux_env_cmd db 'linux', 0
 
 ; Linux application implementations
 linux_hello_app:
-    ; Display "Hello from Linux toolchain!"
-    mov word [0xB8280], 0x0E48  ; 'H' in yellow
-    mov word [0xB8282], 0x0E65  ; 'e'
-    mov word [0xB8284], 0x0E6C  ; 'l'
-    mov word [0xB8286], 0x0E6C  ; 'l'
-    mov word [0xB8288], 0x0E6F  ; 'o'
-    mov word [0xB828A], 0x0E20  ; ' '
-    mov word [0xB828C], 0x0E66  ; 'f'
-    mov word [0xB828E], 0x0E72  ; 'r'
-    mov word [0xB8290], 0x0E6F  ; 'o'
-    mov word [0xB8292], 0x0E6D  ; 'm'
-    mov word [0xB8294], 0x0E20  ; ' '
-    mov word [0xB8296], 0x0E4C  ; 'L'
-    mov word [0xB8298], 0x0E69  ; 'i'
-    mov word [0xB829A], 0x0E6E  ; 'n'
-    mov word [0xB829C], 0x0E75  ; 'u'
-    mov word [0xB829E], 0x0E78  ; 'x'
-    mov word [0xB82A0], 0x0E20  ; ' '
-    mov word [0xB82A2], 0x0E74  ; 't'
-    mov word [0xB82A4], 0x0E6F  ; 'o'
-    mov word [0xB82A6], 0x0E6F  ; 'o'
-    mov word [0xB82A8], 0x0E6C  ; 'l'
-    mov word [0xB82AA], 0x0E63  ; 'c'
-    mov word [0xB82AC], 0x0E68  ; 'h'
-    mov word [0xB82AE], 0x0E61  ; 'a'
-    mov word [0xB82B0], 0x0E69  ; 'i'
-    mov word [0xB82B2], 0x0E6E  ; 'n'
-    mov word [0xB82B4], 0x0E21  ; '!'
+    push rbp
+    mov rbp, rsp
+    
+    ; Set up parameter for load_linux_app(const char* app_name)
+    mov rdi, linux_app_name    ; First parameter in RDI
+    call load_linux_app
+    
+    ; Clean up and return
+    mov rsp, rbp
+    pop rbp
     ret
+
+; Linux app name string
+linux_app_name db 'hello-world', 0
 
 ; Windows compatibility toolchain command
 cmd_windows:
