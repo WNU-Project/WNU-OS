@@ -95,6 +95,81 @@ Code	Color Name	Example VGA Word ('A')
 0xD	Light Magenta	0x0D41 = light magenta 'A'
 0xE	Yellow	0x0E41 = yellow 'A'
 0xF	White	0x0F41 = white 'A'
+
+// Background Colors Cheatsheet
+// Format: 0x[BG][FG] where BG=background color (0-F), FG=foreground color (0-F)
+// Example: 0x1F = Blue background (1) + White text (F)
+
+Background Code	Background Color	White Text Example	Red Text Example
+0x0_	Black Background	0x0F41 = white 'A' on black	0x0441 = red 'A' on black
+0x1_	Blue Background	0x1F41 = white 'A' on blue	0x1441 = red 'A' on blue  
+0x2_	Green Background	0x2F41 = white 'A' on green	0x2441 = red 'A' on green
+0x3_	Cyan Background	0x3F41 = white 'A' on cyan	0x3441 = red 'A' on cyan
+0x4_	Red Background	0x4F41 = white 'A' on red	0x4E41 = yellow 'A' on red
+0x5_	Magenta Background	0x5F41 = white 'A' on magenta	0x5E41 = yellow 'A' on magenta
+0x6_	Brown Background	0x6F41 = white 'A' on brown	0x6E41 = yellow 'A' on brown
+0x7_	Light Gray Background	0x7041 = black 'A' on light gray	0x7441 = red 'A' on light gray
+0x8_	Dark Gray Background	0x8F41 = white 'A' on dark gray	0x8441 = red 'A' on dark gray
+0x9_	Light Blue Background	0x9F41 = white 'A' on light blue	0x9041 = black 'A' on light blue
+0xA_	Light Green Background	0xAF41 = white 'A' on light green	0xA041 = black 'A' on light green  
+0xB_	Light Cyan Background	0xBF41 = white 'A' on light cyan	0xB041 = black 'A' on light cyan
+0xC_	Light Red Background	0xCF41 = white 'A' on light red	0xC041 = black 'A' on light red
+0xD_	Light Magenta Background	0xDF41 = white 'A' on light magenta	0xD041 = black 'A' on light magenta
+0xE_	Yellow Background	0xE041 = black 'A' on yellow	0xE441 = red 'A' on yellow  
+0xF_	White Background	0xF041 = black 'A' on white	0xF441 = red 'A' on white
+
+// Common Background + Foreground Combinations
+0x1F = Blue background + White text (very readable)
+0x2F = Green background + White text (very readable)  
+0x4F = Red background + White text (very readable)
+0xE0 = Yellow background + Black text (very readable)
+0xF0 = White background + Black text (very readable)
+0x70 = Light gray background + Black text (very readable)
+
+// Foreground Colors with Background Colors Cheatsheet
+// Format: 0x[BG][FG] - All possible combinations for 'A' character
+
+// Black Foreground (0x_0) on Different Backgrounds
+0x00 = Black on Black (invisible)	0x10 = Black on Blue		0x20 = Black on Green		0x30 = Black on Cyan
+0x40 = Black on Red			0x50 = Black on Magenta		0x60 = Black on Brown		0x70 = Black on Light Gray
+0x80 = Black on Dark Gray		0x90 = Black on Light Blue	0xA0 = Black on Light Green	0xB0 = Black on Light Cyan
+0xC0 = Black on Light Red		0xD0 = Black on Light Magenta	0xE0 = Black on Yellow		0xF0 = Black on White
+
+// Blue Foreground (0x_1) on Different Backgrounds  
+0x01 = Blue on Black		0x11 = Blue on Blue (invisible)	0x21 = Blue on Green		0x31 = Blue on Cyan
+0x41 = Blue on Red		0x51 = Blue on Magenta		0x61 = Blue on Brown		0x71 = Blue on Light Gray
+0x81 = Blue on Dark Gray	0x91 = Blue on Light Blue	0xA1 = Blue on Light Green	0xB1 = Blue on Light Cyan
+0xC1 = Blue on Light Red	0xD1 = Blue on Light Magenta	0xE1 = Blue on Yellow		0xF1 = Blue on White
+
+// Green Foreground (0x_2) on Different Backgrounds
+0x02 = Green on Black		0x12 = Green on Blue		0x22 = Green on Green (invisible)	0x32 = Green on Cyan
+0x42 = Green on Red		0x52 = Green on Magenta		0x62 = Green on Brown		0x72 = Green on Light Gray  
+0x82 = Green on Dark Gray	0x92 = Green on Light Blue	0xA2 = Green on Light Green	0xB2 = Green on Light Cyan
+0xC2 = Green on Light Red	0xD2 = Green on Light Magenta	0xE2 = Green on Yellow		0xF2 = Green on White
+
+// Red Foreground (0x_4) on Different Backgrounds
+0x04 = Red on Black		0x14 = Red on Blue		0x24 = Red on Green		0x34 = Red on Cyan
+0x44 = Red on Red (invisible)	0x54 = Red on Magenta		0x64 = Red on Brown		0x74 = Red on Light Gray
+0x84 = Red on Dark Gray		0x94 = Red on Light Blue	0xA4 = Red on Light Green	0xB4 = Red on Light Cyan
+0xC4 = Red on Light Red		0xD4 = Red on Light Magenta	0xE4 = Red on Yellow		0xF4 = Red on White
+
+// White Foreground (0x_F) on Different Backgrounds
+0x0F = White on Black		0x1F = White on Blue		0x2F = White on Green		0x3F = White on Cyan
+0x4F = White on Red		0x5F = White on Magenta		0x6F = White on Brown		0x7F = White on Light Gray
+0x8F = White on Dark Gray	0x9F = White on Light Blue	0xAF = White on Light Green	0xBF = White on Light Cyan
+0xCF = White on Light Red	0xDF = White on Light Magenta	0xEF = White on Yellow		0xFF = White on White (invisible)
+
+// Yellow Foreground (0x_E) on Different Backgrounds  
+0x0E = Yellow on Black		0x1E = Yellow on Blue		0x2E = Yellow on Green		0x3E = Yellow on Cyan
+0x4E = Yellow on Red		0x5E = Yellow on Magenta	0x6E = Yellow on Brown		0x7E = Yellow on Light Gray
+0x8E = Yellow on Dark Gray	0x9E = Yellow on Light Blue	0xAE = Yellow on Light Green	0xBE = Yellow on Light Cyan
+0xCE = Yellow on Light Red	0xDE = Yellow on Light Magenta	0xEE = Yellow on Yellow (invisible)	0xFE = Yellow on White
+
+// Light Green Foreground (0x_A) on Different Backgrounds
+0x0A = Light Green on Black	0x1A = Light Green on Blue	0x2A = Light Green on Green	0x3A = Light Green on Cyan
+0x4A = Light Green on Red	0x5A = Light Green on Magenta	0x6A = Light Green on Brown	0x7A = Light Green on Light Gray
+0x8A = Light Green on Dark Gray	0x9A = Light Green on Light Blue	0xAA = Light Green on Light Green (invisible)	0xBA = Light Green on Light Cyan
+0xCA = Light Green on Light Red	0xDA = Light Green on Light Magenta	0xEA = Light Green on Yellow	0xFA = Light Green on White
 // Lines
 
 Line #	Start Address	Offset from 0xB8000
