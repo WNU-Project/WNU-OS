@@ -1,7 +1,7 @@
 #ifndef VGA_H
 #define VGA_H
 
-// Custom printf function for VGA text output
+// function for VGA text output
 int vga(int char_count, int color, char* textasciivaule);
 
 // Clear screen function
