@@ -14,7 +14,7 @@ void clear_screen() {
     }
     cursor_position = 0;
 }
-int vga(int char_count, int color, char* textasciivaule) {
+int vga_print(int char_count, int color, char* textasciivaule) {
     // Try using 16-bit VGA writes instead of byte writes
     volatile unsigned short* vga_words = (volatile unsigned short*)0xB8000;
     

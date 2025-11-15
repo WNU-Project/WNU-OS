@@ -1183,7 +1183,7 @@ cmd_uname:
     mov word [0xB80CA], 0x0731 ; 1
     mov word [0xB80CC], 0x072E ; .
     mov word [0xB80CE], 0x0731 ; 1
-    mov word [0xB80D0], 0x0732 ; 2
+    mov word [0xB80D0], 0x0735 ; 5
     mov word [0xB80D2], 0x072E ; .
     mov word [0xB80D4], 0x0732 ; 2
     mov word [0xB80D6], 0x0730 ; 0
@@ -1200,6 +1200,8 @@ cmd_uname:
     mov word [0xB80EC], 0x0741 ; A
     mov word [0xB80EE], 0x0753 ; S
     mov word [0xB80F0], 0x074D ; M
+    mov word [0xB80F2], 0x0720 ; Space
+    mov word [0xB80F4], 0x0743 ; C
     
     ; Line 2: "MADE WITH DOCKER 28.5.1 BUILD e180ab8"
     mov word [0xB8140], 0x074D ; M
