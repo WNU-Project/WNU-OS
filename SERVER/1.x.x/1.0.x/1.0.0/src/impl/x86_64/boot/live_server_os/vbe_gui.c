@@ -1,207 +1,150 @@
 /*
- * Simple Text-Mode GUI for WNU OS (QEMU Compatible)
- * Uses VGA text mode instead of graphics mode for better compatibility
- * No BIOS calls - direct VGA buffer access only
+ * WNU OS Graphics GUI - Clean Version WITH BEEPS AND WHITE TEXT!
+ * Simple graphics interface for WNU OS SERVER 1.0.0
+ * Copyright (c) 2025 WNU Project
  */
 
-#include "vbe_gui.h"
+#include <stdint.h>
+#include <stddef.h>
+#include "vesa.h"
+#include "vga.h"
 
-// VGA text mode buffer - directly access video memory
-static unsigned char* vga_buffer = (unsigned char*)0xB8000;
-static int cursor_x = 40;
-static int cursor_y = 12;
-
-// Keyboard state
+// Static variables for text mode GUI tracking
+static int gui_active = 0;
+static int text_mode_active = 0;
 static unsigned char last_key = 0;
 
-// Dummy functions for compatibility (not used in text mode)
-int vbe_get_controller_info(void) { return 1; }
-int vbe_get_mode_info(unsigned short mode) { (void)mode; return 1; }
-unsigned short vbe_find_mode(unsigned int width, unsigned int height, unsigned int depth) {
-    (void)width; (void)height; (void)depth; return 1;
-}
-int vbe_set_mode(unsigned short mode) { (void)mode; return 1; }
-void vbe_set_pixel(int x, int y, unsigned int color) { (void)x; (void)y; (void)color; }
-unsigned int vbe_get_pixel(int x, int y) { (void)x; (void)y; return 0; }
-void vbe_fill_rect(int x, int y, int width, int height, unsigned int color) { 
-    (void)x; (void)y; (void)width; (void)height; (void)color; 
-}
-void vbe_draw_line(int x0, int y0, int x1, int y1, unsigned int color) {
-    (void)x0; (void)y0; (void)x1; (void)y1; (void)color;
-}
-void vbe_draw_rect(int x, int y, int width, int height, unsigned int color) {
-    (void)x; (void)y; (void)width; (void)height; (void)color;
-}
-void vbe_clear_screen(unsigned int color) { (void)color; }
-void vbe_draw_char(int x, int y, char c, unsigned int fg_color, unsigned int bg_color) {
-    (void)x; (void)y; (void)c; (void)fg_color; (void)bg_color;
-}
-void vbe_draw_string(int x, int y, const char* str, unsigned int fg_color, unsigned int bg_color) {
-    (void)x; (void)y; (void)str; (void)fg_color; (void)bg_color;
-}
-void save_cursor_background(void) { }
-void restore_cursor_background(void) { }
-void draw_cursor(void) { }
-void handle_keyboard(void) { }
-void draw_window(int x, int y, int width, int height, const char* title) {
-    (void)x; (void)y; (void)width; (void)height; (void)title;
-}
-void draw_desktop(void) { }
+// External beep function from vesa.c
+extern void pc_beep(uint32_t frequency);
+extern void simple_beep(void);
 
-// Read keyboard scancode (safe method)
-static unsigned char read_keyboard_safe(void) {
-    unsigned char status, scancode;
+// Helper function to print strings to VGA using vga_print() correctly - ALL WHITE!
+void print_message(int start_pos, uint8_t color, const char* message) {
+    // FORCE ALL TEXT TO BE WHITE!
+    color = 0x0F; // White on black
     
-    // Read keyboard status
-    __asm__ volatile ("inb $0x64, %0" : "=a" (status));
-    
-    if (status & 0x01) {
-        // Data available, read scancode
-        __asm__ volatile ("inb $0x60, %0" : "=a" (scancode));
-        return scancode;
+    int i = 0;
+    while (message[i] != '\0' && i < 80) {  // Limit to screen width
+        // Use the format you showed: vga_print(1, 7, "\x41"); for 'A'
+        // Create hex string for current character
+        char hex_string[5];
+        unsigned char ascii = (unsigned char)message[i];
+        hex_string[0] = '\\';
+        hex_string[1] = 'x';
+        // Convert to hex digits
+        hex_string[2] = (ascii >> 4) < 10 ? '0' + (ascii >> 4) : 'A' + (ascii >> 4) - 10;
+        hex_string[3] = (ascii & 0xF) < 10 ? '0' + (ascii & 0xF) : 'A' + (ascii & 0xF) - 10;
+        hex_string[4] = '\0';
+        
+        vga_print(start_pos + i, color, hex_string);
+        i++;
     }
-    
-    return 0;
 }
 
-// Main GUI entry point - Simple Text Mode GUI (QEMU Compatible)
+// Simple text mode GUI fallback
+void start_text_mode_gui(void) {
+    print_message(80, 0x0F, "TEXT MODE GUI ACTIVE");
+    print_message(160, 0x07, "Graphics not available, using text mode.");
+    text_mode_active = 1;
+}
+
+// Main GUI entry point - BEEPS AND WHITE TEXT VERSION!
 void start_vbe_gui(void) {
-    // Clear screen with spaces
-    for (int i = 0; i < 80 * 25 * 2; i += 2) {
-        vga_buffer[i] = ' ';     // Character
-        vga_buffer[i + 1] = 0x07; // White on black
-    }
+    gui_active = 1;
     
-    // Draw title bar
-    for (int x = 0; x < 80; x++) {
-        vga_buffer[x * 2] = ' ';
-        vga_buffer[x * 2 + 1] = 0x17; // White on blue
-    }
+    // BEEP at start using simple beep!
+    simple_beep();
     
-    // Title text
-    char* title = "WNU OS - Text Mode GUI (QEMU Compatible)";
-    for (int i = 0; title[i] && i < 40; i++) {
-        vga_buffer[((5 + i) * 2)] = title[i];
-        vga_buffer[((5 + i) * 2) + 1] = 0x17;
-    }
+    // Show starting message "GUI STARTING..." using direct vga_print calls - ALL WHITE!
+    vga_print(160, 15, "\x47");  // G - WHITE (15)
+    vga_print(161, 15, "\x55");  // U - WHITE
+    vga_print(162, 15, "\x49");  // I - WHITE
+    vga_print(163, 15, "\x20");  // space - WHITE
+    vga_print(164, 15, "\x53");  // S - WHITE
+    vga_print(165, 15, "\x54");  // T - WHITE
+    vga_print(166, 15, "\x41");  // A - WHITE
+    vga_print(167, 15, "\x52");  // R - WHITE
+    vga_print(168, 15, "\x54");  // T - WHITE
+    vga_print(169, 15, "\x49");  // I - WHITE
+    vga_print(170, 15, "\x4E");  // N - WHITE
+    vga_print(171, 15, "\x47");  // G - WHITE
     
-    // Draw main window
-    int win_x = 15, win_y = 3, win_w = 50, win_h = 18;
+    // Delay for visibility
+    for (volatile int i = 0; i < 50000000; i++);
     
-    // Window border using simple ASCII characters
-    for (int x = win_x; x < win_x + win_w; x++) {
-        // Top border
-        vga_buffer[((win_y * 80) + x) * 2] = '-';
-        vga_buffer[((win_y * 80) + x) * 2 + 1] = 0x0F;
-        // Bottom border
-        vga_buffer[(((win_y + win_h - 1) * 80) + x) * 2] = '-';
-        vga_buffer[(((win_y + win_h - 1) * 80) + x) * 2 + 1] = 0x0F;
-    }
+    // Another beep before graphics!
+    simple_beep();
     
-    for (int y = win_y; y < win_y + win_h; y++) {
-        // Left border
-        vga_buffer[((y * 80) + win_x) * 2] = '|';
-        vga_buffer[((y * 80) + win_x) * 2 + 1] = 0x0F;
-        // Right border
-        vga_buffer[((y * 80) + (win_x + win_w - 1)) * 2] = '|';
-        vga_buffer[((y * 80) + (win_x + win_w - 1)) * 2 + 1] = 0x0F;
-    }
+    // Initialize VESA graphics
+    int vesa_result = vesa_init();
     
-    // Window corners
-    vga_buffer[((win_y * 80) + win_x) * 2] = '+';
-    vga_buffer[((win_y * 80) + (win_x + win_w - 1)) * 2] = '+';
-    vga_buffer[(((win_y + win_h - 1) * 80) + win_x) * 2] = '+';
-    vga_buffer[(((win_y + win_h - 1) * 80) + (win_x + win_w - 1)) * 2] = '+';
-    
-    // Window title
-    char* win_title = " WNU OS GUI Demo ";
-    for (int i = 0; win_title[i] && i < 18; i++) {
-        vga_buffer[(((win_y) * 80) + (win_x + 2 + i)) * 2] = win_title[i];
-        vga_buffer[(((win_y) * 80) + (win_x + 2 + i)) * 2 + 1] = 0x0F;
-    }
-    
-    // Window content
-    char* content1 = "Welcome to WNU OS!";
-    for (int i = 0; content1[i] && i < 18; i++) {
-        vga_buffer[(((win_y + 3) * 80) + (win_x + 15 + i)) * 2] = content1[i];
-        vga_buffer[(((win_y + 3) * 80) + (win_x + 15 + i)) * 2 + 1] = 0x0E;
-    }
-    
-    char* content2 = "Text Mode GUI is working!";
-    for (int i = 0; content2[i] && i < 25; i++) {
-        vga_buffer[(((win_y + 5) * 80) + (win_x + 12 + i)) * 2] = content2[i];
-        vga_buffer[(((win_y + 5) * 80) + (win_x + 12 + i)) * 2 + 1] = 0x0A;
-    }
-    
-    char* content3 = "No graphics mode required!";
-    for (int i = 0; content3[i] && i < 27; i++) {
-        vga_buffer[(((win_y + 7) * 80) + (win_x + 11 + i)) * 2] = content3[i];
-        vga_buffer[(((win_y + 7) * 80) + (win_x + 11 + i)) * 2 + 1] = 0x0C;
-    }
-    
-    char* content4 = "QEMU Compatible Mode";
-    for (int i = 0; content4[i] && i < 20; i++) {
-        vga_buffer[(((win_y + 9) * 80) + (win_x + 15 + i)) * 2] = content4[i];
-        vga_buffer[(((win_y + 9) * 80) + (win_x + 15 + i)) * 2 + 1] = 0x0B;
-    }
-    
-    // Draw cursor
-    vga_buffer[((cursor_y * 80) + cursor_x) * 2] = '*';
-    vga_buffer[((cursor_y * 80) + cursor_x) * 2 + 1] = 0x0C; // Red cursor
-    
-    // Status bar
-    for (int x = 0; x < 80; x++) {
-        vga_buffer[((24 * 80) + x) * 2] = ' ';
-        vga_buffer[((24 * 80) + x) * 2 + 1] = 0x70; // Black on white
-    }
-    
-    char* status = "Arrow keys to move cursor | Any other key to exit";
-    for (int i = 0; status[i] && i < 48; i++) {
-        vga_buffer[((24 * 80) + (2 + i)) * 2] = status[i];
-        vga_buffer[((24 * 80) + (2 + i)) * 2 + 1] = 0x70;
-    }
-    
-    // Simple input loop
-    while (1) {
-        unsigned char scancode = read_keyboard_safe();
+    if (vesa_result != 0) {
+        // VESA failed - show "VESA FAILED!" in WHITE with beep
+        simple_beep(); // Error beep
+        vga_print(240, 15, "\x56");  // V - WHITE
+        vga_print(241, 15, "\x45");  // E - WHITE
+        vga_print(242, 15, "\x53");  // S - WHITE
+        vga_print(243, 15, "\x41");  // A - WHITE
+        vga_print(244, 15, "\x20");  // space - WHITE
+        vga_print(245, 15, "\x46");  // F - WHITE
+        vga_print(246, 15, "\x41");  // A - WHITE
+        vga_print(247, 15, "\x49");  // I - WHITE
+        vga_print(248, 15, "\x4C");  // L - WHITE
+        vga_print(249, 15, "\x45");  // E - WHITE
+        vga_print(250, 15, "\x44");  // D - WHITE
+        vga_print(251, 15, "\x21");  // ! - WHITE
         
-        if (scancode > 0 && !(scancode & 0x80)) { // Key press (not release)
-            // Clear old cursor
-            vga_buffer[((cursor_y * 80) + cursor_x) * 2] = ' ';
-            vga_buffer[((cursor_y * 80) + cursor_x) * 2 + 1] = 0x07;
-            
-            // Handle arrow keys
-            switch (scancode) {
-                case 0x48: // Up arrow
-                    if (cursor_y > 1) cursor_y--;
-                    break;
-                case 0x50: // Down arrow
-                    if (cursor_y < 23) cursor_y++;
-                    break;
-                case 0x4B: // Left arrow
-                    if (cursor_x > 0) cursor_x--;
-                    break;
-                case 0x4D: // Right arrow
-                    if (cursor_x < 79) cursor_x++;
-                    break;
-                default:
-                    // Any other key exits
-                    goto exit_gui;
-            }
-            
-            // Draw new cursor
-            vga_buffer[((cursor_y * 80) + cursor_x) * 2] = '*';
-            vga_buffer[((cursor_y * 80) + cursor_x) * 2 + 1] = 0x0C;
-        }
-        
-        // Small delay to prevent excessive CPU usage
-        for (volatile int i = 0; i < 50000; i++);
+        start_text_mode_gui();
+        return;
     }
     
-exit_gui:
-    // Clear screen before returning
-    for (int i = 0; i < 80 * 25 * 2; i += 2) {
-        vga_buffer[i] = ' ';     // Character
-        vga_buffer[i + 1] = 0x07; // White on black
-    }
+    // VESA succeeded - show "VESA SUCCESS!" in WHITE with success beep!
+    simple_beep(); // Success beep
+    vga_print(320, 15, "\x56");  // V - WHITE
+    vga_print(321, 15, "\x45");  // E - WHITE
+    vga_print(322, 15, "\x53");  // S - WHITE
+    vga_print(323, 15, "\x41");  // A - WHITE
+    vga_print(324, 15, "\x20");  // space - WHITE
+    vga_print(325, 15, "\x53");  // S - WHITE
+    vga_print(326, 15, "\x55");  // U - WHITE
+    vga_print(327, 15, "\x43");  // C - WHITE
+    vga_print(328, 15, "\x43");  // C - WHITE
+    vga_print(329, 15, "\x45");  // E - WHITE
+    vga_print(330, 15, "\x53");  // S - WHITE
+    vga_print(331, 15, "\x53");  // S - WHITE
+    vga_print(332, 15, "\x21");  // ! - WHITE
+    
+    // Draw test pattern with real graphics
+    vesa_clear_screen(COLOR_CYAN);
+    vesa_fill_rect(100, 100, 200, 100, COLOR_RED);
+    vesa_fill_rect(350, 100, 200, 100, COLOR_GREEN);
+    vesa_fill_rect(600, 100, 200, 100, COLOR_BLUE);
+    
+    // Show "COMPLETE!" in WHITE at bottom with final beep celebration!
+    simple_beep(); // Celebration beep
+    vga_print(480, 15, "\x43");  // C - WHITE
+    vga_print(481, 15, "\x4F");  // O - WHITE
+    vga_print(482, 15, "\x4D");  // M - WHITE
+    vga_print(483, 15, "\x50");  // P - WHITE
+    vga_print(484, 15, "\x4C");  // L - WHITE
+    vga_print(485, 15, "\x45");  // E - WHITE
+    vga_print(486, 15, "\x54");  // T - WHITE
+    vga_print(487, 15, "\x45");  // E - WHITE
+    vga_print(488, 11, "\x21");  // !
+    
+    // Final delay
+    for (volatile int i = 0; i < 50000000; i++);
+    
+    gui_active = 0;
+    return;
+}
+
+// Check if GUI is active
+int is_gui_active(void) {
+    return gui_active;
+}
+
+// Check if text mode GUI is active  
+int is_text_mode_active(void) {
+    return text_mode_active;
 }
