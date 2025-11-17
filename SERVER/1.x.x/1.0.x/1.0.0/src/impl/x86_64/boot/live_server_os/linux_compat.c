@@ -6,7 +6,7 @@
 
 // Linux application loader using vga() function
 int load_linux_app(const char* app_name) {
-    vga_print(80, 7, "\x4C"); // L
+    vga_print(80, 7, VGA_LETTER_L); // L
     vga_print(81, 7, "\x49"); // I
     vga_print(82, 7, "\x4E"); // N
     vga_print(83, 7, "\x55"); // U

@@ -47,6 +47,11 @@ static shell_command_t builtin_commands[] = {
     {"sysinfo", "Show detailed system info", app_sysinfo},
     {"hexdump", "Hex dump of file/memory", app_hexdump},
     {"memtest", "Memory test utility", app_memtest},
+    {"network", "Network management", app_network},
+    {"net", "Network management", app_network},
+    {"netinfo", "Network system information", app_netinfo},
+    {"ping", "Ping a host", app_network},
+    {"ifconfig", "Network interface config", app_network},
     {"shutdown", "Shutdown system", cmd_shutdown},
     {"poweroff", "Shutdown system", cmd_shutdown},
     {"reboot", "Restart system", cmd_reboot},
@@ -62,17 +67,19 @@ static wnu_app_t builtin_apps[] = {
     {"System Info", "1.0", "Detailed hardware and software information", app_sysinfo},
     {"Hex Dump", "1.0", "Binary file viewer and memory inspector", app_hexdump},
     {"Memory Test", "1.0", "RAM testing and benchmarking utility", app_memtest},
+    {"Network Manager", "1.0", "TCP/IP networking stack and utilities", app_network},
+    {"Network Info", "1.0", "Complete networking system documentation", app_netinfo},
     {NULL, NULL, NULL, NULL} // Terminator
 };
 
 // Simple string functions for shell use
-static int wnu_strlen(const char* str) {
+int wnu_strlen(const char* str) {
     int len = 0;
     while (*str++) len++;
     return len;
 }
 
-static int wnu_strcmp(const char* s1, const char* s2) {
+int wnu_strcmp(const char* s1, const char* s2) {
     while (*s1 && (*s1 == *s2)) {
         s1++;
         s2++;
@@ -80,7 +87,7 @@ static int wnu_strcmp(const char* s1, const char* s2) {
     return *(unsigned char*)s1 - *(unsigned char*)s2;
 }
 
-static int wnu_strncmp(const char* s1, const char* s2, int n) {
+int wnu_strncmp(const char* s1, const char* s2, int n) {
     while (n && *s1 && (*s1 == *s2)) {
         s1++;
         s2++;
@@ -90,13 +97,13 @@ static int wnu_strncmp(const char* s1, const char* s2, int n) {
     return *(unsigned char*)s1 - *(unsigned char*)s2;
 }
 
-static char* wnu_strcpy(char* dest, const char* src) {
+char* wnu_strcpy(char* dest, const char* src) {
     char* d = dest;
     while ((*d++ = *src++));
     return dest;
 }
 
-static char* wnu_strcat(char* dest, const char* src) {
+char* wnu_strcat(char* dest, const char* src) {
     char* d = dest + wnu_strlen(dest);
     while ((*d++ = *src++));
     return dest;
@@ -515,3 +522,53 @@ int cmd_kill(int argc, char* argv[]) { return 0; }
 int cmd_run(int argc, char* argv[]) { return 0; }
 int cmd_shutdown(int argc, char* argv[]) { return 0; }
 int cmd_reboot(int argc, char* argv[]) { return 0; }
+
+// Entry point for shell application (called from assembly)
+int app_shell(int argc, char* argv[]) {
+    (void)argc; // Suppress unused warning
+    (void)argv; // Suppress unused warning
+    
+    // Print shell header
+    shell_print_color("╔════════════════════════════════════════════════╗\n", VGA_COLOR_CYAN);
+    shell_print_color("║              WNU Advanced Shell               ║\n", VGA_COLOR_CYAN);
+    shell_print_color("║           Modern Command Interface            ║\n", VGA_COLOR_CYAN);
+    shell_print_color("╚════════════════════════════════════════════════╝\n", VGA_COLOR_CYAN);
+    shell_print("\n");
+    
+    // Initialize and run shell
+    shell_init();
+    shell_run();
+    
+    return 0;
+}
+
+// Placeholder functions for missing applications
+int app_filemanager(int argc, char* argv[]) {
+    (void)argc; (void)argv;
+    shell_print_color("File Manager v1.0\n", VGA_COLOR_CYAN);
+    shell_print("Feature coming soon...\n");
+    return 0;
+}
+
+int app_sysinfo(int argc, char* argv[]) {
+    (void)argc; (void)argv;
+    shell_print_color("System Information v1.0\n", VGA_COLOR_GREEN);
+    shell_print("CPU: x86_64\n");
+    shell_print("Memory: 64MB\n");
+    shell_print("OS: WNU OS SERVER 1.0.0\n");
+    return 0;
+}
+
+int app_hexdump(int argc, char* argv[]) {
+    (void)argc; (void)argv;
+    shell_print_color("Hex Dump Utility v1.0\n", VGA_COLOR_YELLOW);
+    shell_print("Feature coming soon...\n");
+    return 0;
+}
+
+int app_memtest(int argc, char* argv[]) {
+    (void)argc; (void)argv;
+    shell_print_color("Memory Test Utility v1.0\n", VGA_COLOR_MAGENTA);
+    shell_print("Feature coming soon...\n");
+    return 0;
+}

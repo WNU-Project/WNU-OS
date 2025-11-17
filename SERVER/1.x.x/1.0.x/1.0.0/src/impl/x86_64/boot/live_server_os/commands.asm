@@ -20,6 +20,13 @@ extern draw_menu
 extern wnu_toolchain_main
 extern load_linux_app
 
+; External C application functions
+extern app_shell
+extern app_calc
+extern app_edit
+extern app_network
+extern networkd_shell_integration
+
 ; Process the typed command - RSI points to command buffer start
 process_command:
     ; Calculate command length and check what was typed
@@ -122,6 +129,39 @@ process_command:
     call check_toolchain
     cmp al, 1
     je cmd_toolchain
+    
+    ; New C-based applications
+    call check_shell
+    cmp al, 1
+    je cmd_shell
+    
+    call check_calc
+    cmp al, 1
+    je cmd_calc
+    
+    call check_calculator
+    cmp al, 1
+    je cmd_calc
+    
+    call check_edit
+    cmp al, 1
+    je cmd_edit
+    
+    call check_editor
+    cmp al, 1
+    je cmd_edit
+    
+    call check_network
+    cmp al, 1
+    je cmd_network
+    
+    call check_ping
+    cmp al, 1
+    je cmd_network
+    
+    call check_ifconfig
+    cmp al, 1
+    je cmd_network
     
     ; No command found - show error
     jmp show_error
@@ -934,7 +974,7 @@ cmd_help:
     mov word [0xB80AC], 0x0720
     mov word [0xB80AE], 0x0720
     
-    ; Show help information with all commands
+    ; Show help information with all commands including new apps
     mov word [0xB80A0], 0x0E6C  ; 'l' yellow
     mov word [0xB80A2], 0x0E73  ; 's'
     mov word [0xB80A4], 0x0E2C  ; ','
@@ -949,28 +989,25 @@ cmd_help:
     mov word [0xB80B6], 0x0E61  ; 'a'
     mov word [0xB80B8], 0x0E72  ; 'r'
     mov word [0xB80BA], 0x0E2C  ; ','
-    mov word [0xB80BC], 0x0E75  ; 'u'
-    mov word [0xB80BE], 0x0E6E  ; 'n'
-    mov word [0xB80C0], 0x0E61  ; 'a'
-    mov word [0xB80C2], 0x0E6D  ; 'm'
-    mov word [0xB80C4], 0x0E65  ; 'e'
-    mov word [0xB80C6], 0x0E2C  ; ','
-    mov word [0xB80C8], 0x0E74  ; 't'
-    mov word [0xB80CA], 0x0E65  ; 'e'
-    mov word [0xB80CC], 0x0E73  ; 's'
-    mov word [0xB80CE], 0x0E74  ; 't'
-    mov word [0xB80D0], 0x0E2C  ; ','
-    mov word [0xB80D2], 0x0E63  ; 'c' (cd command)
-    mov word [0xB80D4], 0x0E64  ; 'd'
-    mov word [0xB80D6], 0x0E2C  ; ','
-    mov word [0xB80D8], 0x0967  ; 'g' (gui command)
-    mov word [0xB80DA], 0x0975  ; 'u'
-    mov word [0xB80DC], 0x0969  ; 'i'
-    mov word [0xB80DE], 0x092C  ; ','
-    mov word [0xB80E0], 0x0C77  ; 'w' red (highlight WNUC)
-    mov word [0xB80E2], 0x0C6E  ; 'n'
-    mov word [0xB80E4], 0x0C75  ; 'u'
-    mov word [0xB80E6], 0x0C63  ; 'c'
+    mov word [0xB80BC], 0x0967  ; 'g' blue (gui command)
+    mov word [0xB80BE], 0x0975  ; 'u'
+    mov word [0xB80C0], 0x0969  ; 'i'
+    mov word [0xB80C2], 0x0E2C  ; ','
+    mov word [0xB80C4], 0x0A73  ; 's' green (shell)
+    mov word [0xB80C6], 0x0A68  ; 'h'
+    mov word [0xB80C8], 0x0A65  ; 'e'
+    mov word [0xB80CA], 0x0A6C  ; 'l'
+    mov word [0xB80CC], 0x0A6C  ; 'l'
+    mov word [0xB80CE], 0x0E2C  ; ','
+    mov word [0xB80D0], 0x0B63  ; 'c' cyan (calc)
+    mov word [0xB80D2], 0x0B61  ; 'a'
+    mov word [0xB80D4], 0x0B6C  ; 'l'
+    mov word [0xB80D6], 0x0B63  ; 'c'
+    mov word [0xB80D8], 0x0E2C  ; ','
+    mov word [0xB80DA], 0x0D65  ; 'e' magenta (edit)
+    mov word [0xB80DC], 0x0D64  ; 'd'
+    mov word [0xB80DE], 0x0D69  ; 'i'
+    mov word [0xB80E0], 0x0D74  ; 't'
     jmp reset_prompt
 
 cmd_clear:
@@ -2430,6 +2467,326 @@ toolchain_match:
     mov al, 1
     ret
 
+; Check if command is "shell"
+check_shell:
+    mov al, 0
+    
+    ; Check 's'
+    cmp word [0xB8020], 0x0773
+    jne shell_no_match
+    
+    ; Check 'h'
+    cmp word [0xB8022], 0x0768
+    jne shell_no_match
+    
+    ; Check 'e'
+    cmp word [0xB8024], 0x0765
+    jne shell_no_match
+    
+    ; Check 'l'
+    cmp word [0xB8026], 0x076C
+    jne shell_no_match
+    
+    ; Check 'l'
+    cmp word [0xB8028], 0x076C
+    jne shell_no_match
+    
+    ; Check if command ends here
+    cmp word [0xB802A], 0x0720  ; space
+    je shell_match
+    cmp word [0xB802A], 0x0700  ; end
+    je shell_match
+    
+shell_no_match:
+    ret
+shell_match:
+    mov al, 1
+    ret
+
+; Check if command is "calc"
+check_calc:
+    mov al, 0
+    
+    ; Check 'c'
+    cmp word [0xB8020], 0x0763
+    jne calc_no_match
+    
+    ; Check 'a'
+    cmp word [0xB8022], 0x0761
+    jne calc_no_match
+    
+    ; Check 'l'
+    cmp word [0xB8024], 0x076C
+    jne calc_no_match
+    
+    ; Check 'c'
+    cmp word [0xB8026], 0x0763
+    jne calc_no_match
+    
+    ; Check if command ends here
+    cmp word [0xB8028], 0x0720  ; space
+    je calc_match
+    cmp word [0xB8028], 0x0700  ; end
+    je calc_match
+    
+calc_no_match:
+    ret
+calc_match:
+    mov al, 1
+    ret
+
+; Check if command is "calculator"
+check_calculator:
+    mov al, 0
+    
+    ; Check 'c'
+    cmp word [0xB8020], 0x0763
+    jne calculator_no_match
+    
+    ; Check 'a'
+    cmp word [0xB8022], 0x0761
+    jne calculator_no_match
+    
+    ; Check 'l'
+    cmp word [0xB8024], 0x076C
+    jne calculator_no_match
+    
+    ; Check 'c'
+    cmp word [0xB8026], 0x0763
+    jne calculator_no_match
+    
+    ; Check 'u'
+    cmp word [0xB8028], 0x0775
+    jne calculator_no_match
+    
+    ; Check 'l'
+    cmp word [0xB802A], 0x076C
+    jne calculator_no_match
+    
+    ; Check 'a'
+    cmp word [0xB802C], 0x0761
+    jne calculator_no_match
+    
+    ; Check 't'
+    cmp word [0xB802E], 0x0774
+    jne calculator_no_match
+    
+    ; Check 'o'
+    cmp word [0xB8030], 0x076F
+    jne calculator_no_match
+    
+    ; Check 'r'
+    cmp word [0xB8032], 0x0772
+    jne calculator_no_match
+    
+    ; Check if command ends here
+    cmp word [0xB8034], 0x0720  ; space
+    je calculator_match
+    cmp word [0xB8034], 0x0700  ; end
+    je calculator_match
+    
+calculator_no_match:
+    ret
+calculator_match:
+    mov al, 1
+    ret
+
+; Check if command is "edit"
+check_edit:
+    mov al, 0
+    
+    ; Check 'e'
+    cmp word [0xB8020], 0x0765
+    jne edit_no_match
+    
+    ; Check 'd'
+    cmp word [0xB8022], 0x0764
+    jne edit_no_match
+    
+    ; Check 'i'
+    cmp word [0xB8024], 0x0769
+    jne edit_no_match
+    
+    ; Check 't'
+    cmp word [0xB8026], 0x0774
+    jne edit_no_match
+    
+    ; Check if command ends here
+    cmp word [0xB8028], 0x0720  ; space
+    je edit_match
+    cmp word [0xB8028], 0x0700  ; end
+    je edit_match
+    
+edit_no_match:
+    ret
+edit_match:
+    mov al, 1
+    ret
+
+; Check if command is "editor"
+check_editor:
+    mov al, 0
+    
+    ; Check 'e'
+    cmp word [0xB8020], 0x0765
+    jne editor_no_match
+    
+    ; Check 'd'
+    cmp word [0xB8022], 0x0764
+    jne editor_no_match
+    
+    ; Check 'i'
+    cmp word [0xB8024], 0x0769
+    jne editor_no_match
+    
+    ; Check 't'
+    cmp word [0xB8026], 0x0774
+    jne editor_no_match
+    
+    ; Check 'o'
+    cmp word [0xB8028], 0x076F
+    jne editor_no_match
+    
+    ; Check 'r'
+    cmp word [0xB802A], 0x0772
+    jne editor_no_match
+    
+    ; Check if command ends here
+    cmp word [0xB802C], 0x0720  ; space
+    je editor_match
+    cmp word [0xB802C], 0x0700  ; end
+    je editor_match
+    
+editor_no_match:
+    ret
+editor_match:
+    mov al, 1
+    ret
+
+; Check if command is "network"
+check_network:
+    mov al, 0
+    
+    ; Check 'n'
+    cmp word [0xB8020], 0x076E
+    jne network_no_match
+    
+    ; Check 'e'
+    cmp word [0xB8022], 0x0765
+    jne network_no_match
+    
+    ; Check 't'
+    cmp word [0xB8024], 0x0774
+    jne network_no_match
+    
+    ; Check 'w'
+    cmp word [0xB8026], 0x0777
+    jne network_no_match
+    
+    ; Check 'o'
+    cmp word [0xB8028], 0x076F
+    jne network_no_match
+    
+    ; Check 'r'
+    cmp word [0xB802A], 0x0772
+    jne network_no_match
+    
+    ; Check 'k'
+    cmp word [0xB802C], 0x076B
+    jne network_no_match
+    
+    ; Check if command ends here or has space
+    cmp word [0xB802E], 0x0720  ; space
+    je network_match
+    cmp word [0xB802E], 0x0700  ; end
+    je network_match
+    
+network_no_match:
+    ret
+network_match:
+    mov al, 1
+    ret
+
+; Check if command is "ping"
+check_ping:
+    mov al, 0
+    
+    ; Check 'p'
+    cmp word [0xB8020], 0x0770
+    jne ping_no_match
+    
+    ; Check 'i'
+    cmp word [0xB8022], 0x0769
+    jne ping_no_match
+    
+    ; Check 'n'
+    cmp word [0xB8024], 0x076E
+    jne ping_no_match
+    
+    ; Check 'g'
+    cmp word [0xB8026], 0x0767
+    jne ping_no_match
+    
+    ; Check if command ends here or has space
+    cmp word [0xB8028], 0x0720  ; space
+    je ping_match
+    cmp word [0xB8028], 0x0700  ; end
+    je ping_match
+    
+ping_no_match:
+    ret
+ping_match:
+    mov al, 1
+    ret
+
+; Check if command is "ifconfig"
+check_ifconfig:
+    mov al, 0
+    
+    ; Check 'i'
+    cmp word [0xB8020], 0x0769
+    jne ifconfig_no_match
+    
+    ; Check 'f'
+    cmp word [0xB8022], 0x0766
+    jne ifconfig_no_match
+    
+    ; Check 'c'
+    cmp word [0xB8024], 0x0763
+    jne ifconfig_no_match
+    
+    ; Check 'o'
+    cmp word [0xB8026], 0x076F
+    jne ifconfig_no_match
+    
+    ; Check 'n'
+    cmp word [0xB8028], 0x076E
+    jne ifconfig_no_match
+    
+    ; Check 'f'
+    cmp word [0xB802A], 0x0766
+    jne ifconfig_no_match
+    
+    ; Check 'i'
+    cmp word [0xB802C], 0x0769
+    jne ifconfig_no_match
+    
+    ; Check 'g'
+    cmp word [0xB802E], 0x0767
+    jne ifconfig_no_match
+    
+    ; Check if command ends here or has space
+    cmp word [0xB8030], 0x0720  ; space
+    je ifconfig_match
+    cmp word [0xB8030], 0x0700  ; end
+    je ifconfig_match
+    
+ifconfig_no_match:
+    ret
+ifconfig_match:
+    mov al, 1
+    ret
+
 ; GUI command implementation
 cmd_gui:
     push rbp
@@ -2856,3 +3213,201 @@ toolchain_select_cmd db 'select', 0
 cmd_poweroff:
     call systemd_poweroff
     ret
+
+; New C application command implementations
+cmd_shell:
+    push rbp
+    mov rbp, rsp
+    push rax
+    push rbx
+    push rcx
+    push rdx
+    push rsi
+    push rdi
+    
+    ; Clear output area and display "Starting WNU Shell..."
+    mov word [0xB80A0], 0x0A53  ; 'S' green
+    mov word [0xB80A2], 0x0A74  ; 't' 
+    mov word [0xB80A4], 0x0A61  ; 'a'
+    mov word [0xB80A6], 0x0A72  ; 'r'
+    mov word [0xB80A8], 0x0A74  ; 't'
+    mov word [0xB80AA], 0x0A69  ; 'i'
+    mov word [0xB80AC], 0x0A6E  ; 'n'
+    mov word [0xB80AE], 0x0A67  ; 'g'
+    mov word [0xB80B0], 0x0A20  ; ' '
+    mov word [0xB80B2], 0x0E57  ; 'W' yellow
+    mov word [0xB80B4], 0x0E4E  ; 'N'
+    mov word [0xB80B6], 0x0E55  ; 'U'
+    mov word [0xB80B8], 0x0A20  ; ' '
+    mov word [0xB80BA], 0x0A53  ; 'S'
+    mov word [0xB80BC], 0x0A68  ; 'h'
+    mov word [0xB80BE], 0x0A65  ; 'e'
+    mov word [0xB80C0], 0x0A6C  ; 'l'
+    mov word [0xB80C2], 0x0A6C  ; 'l'
+    mov word [0xB80C4], 0x0A2E  ; '.'
+    mov word [0xB80C6], 0x0A2E  ; '.'
+    mov word [0xB80C8], 0x0A2E  ; '.'
+    
+    ; Call shell application with no arguments
+    mov rdi, 0  ; argc = 0
+    mov rsi, 0  ; argv = NULL
+    call app_shell
+    
+    pop rdi
+    pop rsi
+    pop rdx
+    pop rcx
+    pop rbx
+    pop rax
+    pop rbp
+    jmp reset_prompt
+
+cmd_calc:
+    push rbp
+    mov rbp, rsp
+    push rax
+    push rbx
+    push rcx
+    push rdx
+    push rsi
+    push rdi
+    
+    ; Clear output area and display "Starting Calculator..."
+    mov word [0xB80A0], 0x0953  ; 'S' blue
+    mov word [0xB80A2], 0x0974  ; 't'
+    mov word [0xB80A4], 0x0961  ; 'a'
+    mov word [0xB80A6], 0x0972  ; 'r'
+    mov word [0xB80A8], 0x0974  ; 't'
+    mov word [0xB80AA], 0x0969  ; 'i'
+    mov word [0xB80AC], 0x096E  ; 'n'
+    mov word [0xB80AE], 0x0967  ; 'g'
+    mov word [0xB80B0], 0x0920  ; ' '
+    mov word [0xB80B2], 0x0B43  ; 'C' cyan
+    mov word [0xB80B4], 0x0B61  ; 'a'
+    mov word [0xB80B6], 0x0B6C  ; 'l'
+    mov word [0xB80B8], 0x0B63  ; 'c'
+    mov word [0xB80BA], 0x0B75  ; 'u'
+    mov word [0xB80BC], 0x0B6C  ; 'l'
+    mov word [0xB80BE], 0x0B61  ; 'a'
+    mov word [0xB80C0], 0x0B74  ; 't'
+    mov word [0xB80C2], 0x0B6F  ; 'o'
+    mov word [0xB80C4], 0x0B72  ; 'r'
+    mov word [0xB80C6], 0x092E  ; '.'
+    mov word [0xB80C8], 0x092E  ; '.'
+    mov word [0xB80CA], 0x092E  ; '.'
+    
+    ; Call calculator application with no arguments
+    mov rdi, 0  ; argc = 0
+    mov rsi, 0  ; argv = NULL
+    call app_calc
+    
+    pop rdi
+    pop rsi
+    pop rdx
+    pop rcx
+    pop rbx
+    pop rax
+    pop rbp
+    jmp reset_prompt
+
+cmd_edit:
+    push rbp
+    mov rbp, rsp
+    push rax
+    push rbx
+    push rcx
+    push rdx
+    push rsi
+    push rdi
+    
+    ; Clear output area and display "Starting Text Editor..."
+    mov word [0xB80A0], 0x0D53  ; 'S' magenta
+    mov word [0xB80A2], 0x0D74  ; 't'
+    mov word [0xB80A4], 0x0D61  ; 'a'
+    mov word [0xB80A6], 0x0D72  ; 'r'
+    mov word [0xB80A8], 0x0D74  ; 't'
+    mov word [0xB80AA], 0x0D69  ; 'i'
+    mov word [0xB80AC], 0x0D6E  ; 'n'
+    mov word [0xB80AE], 0x0D67  ; 'g'
+    mov word [0xB80B0], 0x0D20  ; ' '
+    mov word [0xB80B2], 0x0E54  ; 'T' yellow
+    mov word [0xB80B4], 0x0E65  ; 'e'
+    mov word [0xB80B6], 0x0E78  ; 'x'
+    mov word [0xB80B8], 0x0E74  ; 't'
+    mov word [0xB80BA], 0x0D20  ; ' '
+    mov word [0xB80BC], 0x0D45  ; 'E'
+    mov word [0xB80BE], 0x0D64  ; 'd'
+    mov word [0xB80C0], 0x0D69  ; 'i'
+    mov word [0xB80C2], 0x0D74  ; 't'
+    mov word [0xB80C4], 0x0D6F  ; 'o'
+    mov word [0xB80C6], 0x0D72  ; 'r'
+    mov word [0xB80C8], 0x0D2E  ; '.'
+    mov word [0xB80CA], 0x0D2E  ; '.'
+    mov word [0xB80CC], 0x0D2E  ; '.'
+    
+    ; Call text editor application with no arguments
+    mov rdi, 0  ; argc = 0
+    mov rsi, 0  ; argv = NULL
+    call app_edit
+    
+    pop rdi
+    pop rsi
+    pop rdx
+    pop rcx
+    pop rbx
+    pop rax
+    pop rbp
+    jmp reset_prompt
+
+cmd_network:
+    push rbp
+    mov rbp, rsp
+    push rax
+    push rbx
+    push rcx
+    push rdx
+    push rsi
+    push rdi
+    
+    ; Clear output area and display "Starting Network Manager..."
+    mov word [0xB80A0], 0x0A53  ; 'S' green
+    mov word [0xB80A2], 0x0A74  ; 't'
+    mov word [0xB80A4], 0x0A61  ; 'a'
+    mov word [0xB80A6], 0x0A72  ; 'r'
+    mov word [0xB80A8], 0x0A74  ; 't'
+    mov word [0xB80AA], 0x0A69  ; 'i'
+    mov word [0xB80AC], 0x0A6E  ; 'n'
+    mov word [0xB80AE], 0x0A67  ; 'g'
+    mov word [0xB80B0], 0x0A20  ; ' '
+    mov word [0xB80B2], 0x0A4E  ; 'N'
+    mov word [0xB80B4], 0x0A65  ; 'e'
+    mov word [0xB80B6], 0x0A74  ; 't'
+    mov word [0xB80B8], 0x0A77  ; 'w'
+    mov word [0xB80BA], 0x0A6F  ; 'o'
+    mov word [0xB80BC], 0x0A72  ; 'r'
+    mov word [0xB80BE], 0x0A6B  ; 'k'
+    mov word [0xB80C0], 0x0A20  ; ' '
+    mov word [0xB80C2], 0x0A4D  ; 'M'
+    mov word [0xB80C4], 0x0A61  ; 'a'
+    mov word [0xB80C6], 0x0A6E  ; 'n'
+    mov word [0xB80C8], 0x0A61  ; 'a'
+    mov word [0xB80CA], 0x0A67  ; 'g'
+    mov word [0xB80CC], 0x0A65  ; 'e'
+    mov word [0xB80CE], 0x0A72  ; 'r'
+    mov word [0xB80D0], 0x0A2E  ; '.'
+    mov word [0xB80D2], 0x0A2E  ; '.'
+    mov word [0xB80D4], 0x0A2E  ; '.'
+    
+    ; Call network application with no arguments
+    mov rdi, 0  ; argc = 0
+    mov rsi, 0  ; argv = NULL
+    call app_network
+    
+    pop rdi
+    pop rsi
+    pop rdx
+    pop rcx
+    pop rbx
+    pop rax
+    pop rbp
+    jmp reset_prompt

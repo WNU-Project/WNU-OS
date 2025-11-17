@@ -5,6 +5,7 @@
  */
 
 #include "wnu_shell.h"
+#include "vga.h"
 
 // Calculator state
 typedef struct {

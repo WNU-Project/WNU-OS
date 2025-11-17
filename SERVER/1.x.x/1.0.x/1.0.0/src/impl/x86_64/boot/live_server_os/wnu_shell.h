@@ -109,4 +109,22 @@ int shell_is_directory(const char* path);
 long shell_get_file_size(const char* path);
 int shell_list_directory(const char* path);
 
+// String utility functions
+int wnu_strlen(const char* str);
+char* wnu_strcpy(char* dest, const char* src);
+char* wnu_strcat(char* dest, const char* src);
+int wnu_strcmp(const char* s1, const char* s2);
+int wnu_strncmp(const char* s1, const char* s2, int n);
+
+// Application functions
+int app_shell(int argc, char* argv[]);
+int app_calc(int argc, char* argv[]);
+int app_edit(int argc, char* argv[]);
+int app_filemanager(int argc, char* argv[]);
+int app_sysinfo(int argc, char* argv[]);
+int app_hexdump(int argc, char* argv[]);
+int app_memtest(int argc, char* argv[]);
+int app_network(int argc, char* argv[]);
+int app_netinfo(int argc, char* argv[]);
+
 #endif // WNU_SHELL_H
