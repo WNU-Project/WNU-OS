@@ -11,7 +11,7 @@ x86_64_asm_object_files := $(patsubst src/impl/x86_64/%.asm, build/x86_64/%.o, $
 x86_64_object_files := $(x86_64_asm_object_files)
 
 .PHONY: all
-all: build_x86_64 minimal_kernel live_wnu_os_server
+all: live_wnu_os_server
 
 $(x86_64_asm_object_files): build/x86_64/%.o: src/impl/x86_64/%.asm
 	@mkdir -p $(dir $@)
