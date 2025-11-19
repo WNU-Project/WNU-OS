@@ -4,6 +4,9 @@
 // function for VGA text output
 int vga_print(int char_count, int color, const char* textasciivaule);
 
+// Simple string output function
+void vga_puts(const char* str);
+
 // Clear screen function
 void clear_screen();
 

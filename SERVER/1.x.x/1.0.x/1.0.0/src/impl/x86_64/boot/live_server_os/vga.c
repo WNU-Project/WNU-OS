@@ -75,3 +75,34 @@ int vga_print(int char_count, int color, const char* textasciivaule) {
     
     return 0;
 }
+
+// Simple string output function - outputs string to VGA text mode
+void vga_puts(const char* str) {
+    static int row = 0;
+    static int col = 0;
+    
+    while (*str) {
+        if (*str == '\n') {
+            row++;
+            col = 0;
+            if (row >= 25) {
+                // Simple scroll - move everything up one line
+                for (int i = 0; i < 24 * 80; i++) {
+                    vga_memory[i] = vga_memory[i + 80];
+                }
+                // Clear last line
+                for (int i = 24 * 80; i < 25 * 80; i++) {
+                    vga_memory[i] = 0x0720; // Space with light gray on black
+                }
+                row = 24;
+            }
+        } else {
+            if (col < 80 && row < 25) {
+                // Create VGA word: high byte = color (white on black), low byte = character
+                vga_memory[row * 80 + col] = (VGA_COLOR_WHITE << 8) | *str;
+                col++;
+            }
+        }
+        str++;
+    }
+}

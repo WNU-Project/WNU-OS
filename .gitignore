@@ -39,3 +39,6 @@ dkms.conf
 
 # other folders and files
 .vs/
+
+# Folders So Git Can Push (TEMP)
+C:\Users\tadeo\OneDrive\Documents\GitHub\WNU OS\SERVER\1.x.x\1.0.x\1.0.0\targets\x86_64\iso\usr\include\*
